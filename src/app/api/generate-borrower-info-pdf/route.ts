@@ -254,6 +254,7 @@ export async function POST(req: Request) {
       margin: { top: "30px", bottom: "30px" },
     });
 
+    
     await browser.close();
 
     return new Response(Buffer.from(pdfBuffer), {

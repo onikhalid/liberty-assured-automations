@@ -7,6 +7,9 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
+    // Log environment for debugging
+    console.log('Environment:', process.env.VERCEL_ENV || 'local');
+    
     const data = await req.json();
 
     const htmlContent = `
@@ -202,11 +205,47 @@ export async function POST(req: Request) {
     </html>
     `;
 
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
+    let browser;
+    
+    try {
+      if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') {
+        // Running on Vercel or production - use chromium
+        console.log('Using Vercel Chromium...');
+        
+        // Ensure chromium is set up properly
+        await chromium.font("https://raw.githubusercontent.com/googlefonts/noto-emoji/main/fonts/NotoColorEmoji.ttf");
+        
+        const executablePath = await chromium.executablePath();
+        console.log('Chromium executable path:', executablePath);
+        
+        browser = await puppeteer.launch({
+          args: [
+            ...chromium.args,
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu'
+          ],
+          executablePath,
+          headless: true,
+        });
+      } else {
+        // Running locally - use local Chrome
+        console.log('Using local Chrome...');
+        browser = await puppeteer.launch({
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
+      }
+    } catch (browserError) {
+      console.error('Browser launch failed:', browserError);
+      const errorMessage = browserError instanceof Error ? browserError.message : String(browserError);
+      throw new Error(`Failed to launch browser: ${errorMessage}`);
+    }
 
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
@@ -223,7 +262,7 @@ export async function POST(req: Request) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": "inline; filename=kyc-form.pdf",
+        "Content-Disposition": "inline; filename=customer-info.pdf",
       },
     });
   } catch (error: any) {

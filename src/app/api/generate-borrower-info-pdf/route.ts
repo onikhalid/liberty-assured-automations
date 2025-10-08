@@ -7,8 +7,9 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    // Log environment for debugging
+    console.log('Starting PDF generation...');
     console.log('Environment:', process.env.VERCEL_ENV || 'local');
+    console.log('Node version:', process.version);
     
     const data = await req.json();
 
@@ -208,30 +209,23 @@ export async function POST(req: Request) {
     let browser;
     
     try {
-      if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') {
-        // Running on Vercel or production - use chromium
+      const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+      
+      if (isProduction) {
+        // Running on Vercel production - use @sparticuz/chromium
         console.log('Using Vercel Chromium...');
-        
-        // Ensure chromium is set up properly
-        await chromium.font("https://raw.githubusercontent.com/googlefonts/noto-emoji/main/fonts/NotoColorEmoji.ttf");
+        console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
+        console.log('NODE_ENV:', process.env.NODE_ENV);
         
         const executablePath = await chromium.executablePath();
         console.log('Chromium executable path:', executablePath);
         
         browser = await puppeteer.launch({
-          args: [
-            ...chromium.args,
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu'
-          ],
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
           executablePath,
           headless: true,
+          ignoreHTTPSErrors: true,
         });
       } else {
         // Running locally - use local Chrome
@@ -239,10 +233,14 @@ export async function POST(req: Request) {
         browser = await puppeteer.launch({
           headless: true,
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          timeout: 30000
         });
       }
     } catch (browserError) {
       console.error('Browser launch failed:', browserError);
+      if (browserError instanceof Error) {
+        console.error('Browser error stack:', browserError.stack);
+      }
       const errorMessage = browserError instanceof Error ? browserError.message : String(browserError);
       throw new Error(`Failed to launch browser: ${errorMessage}`);
     }

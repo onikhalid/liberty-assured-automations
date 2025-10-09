@@ -4,39 +4,75 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const getPuppeteer = async () => {
+  // Always use puppeteer-core with @sparticuz/chromium for consistency
+  const puppeteer = await import("puppeteer-core");
+  const chromium = await import("@sparticuz/chromium");
+  
   if (process.env.NODE_ENV === "development") {
-    // For local development, try to use local puppeteer with system Chrome
+    // For local development, try to use system Chrome if available
+    const isWindows = process.platform === 'win32';
+    const isMac = process.platform === 'darwin';
+    const isLinux = process.platform === 'linux';
+    
+    let localChromePath = '';
+    if (isWindows) {
+      localChromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    } else if (isMac) {
+      localChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    } else if (isLinux) {
+      localChromePath = '/usr/bin/google-chrome';
+    }
+    
     try {
-      const puppeteer = await import("puppeteer");
-      return puppeteer.default;
+      // Try to use local Chrome first
+      return {
+        launch: async (options: any) =>
+          puppeteer.default.launch({
+            ...options,
+            executablePath: localChromePath,
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          }),
+      };
     } catch {
-      // Fallback to puppeteer-core with chromium for local development
-      console.log('Local puppeteer not found, using puppeteer-core with chromium');
-      const puppeteer = await import("puppeteer-core");
-      const chromium = await import("@sparticuz/chromium");
-      
+      console.log('Local Chrome not found, using @sparticuz/chromium');
+      // Fallback to chromium
       return {
         launch: async (options: any) =>
           puppeteer.default.launch({
             ...options,
             executablePath: await chromium.default.executablePath(),
-            args: [...chromium.default.args, "--no-sandbox", "--disable-setuid-sandbox", ...(options.args || [])],
+            args: [...chromium.default.args, "--no-sandbox", "--disable-setuid-sandbox"],
             headless: true,
           }),
       };
     }
   } else {
-    // For production (Vercel), use @sparticuz/chromium
-    const puppeteer = await import("puppeteer-core");
-    const chromium = await import("@sparticuz/chromium");
+    // For production (Vercel), use @sparticuz/chromium with more conservative settings
+    // Set chromium flags for better compatibility
+    await chromium.default.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
     
     return {
       launch: async (options: any) =>
         puppeteer.default.launch({
           ...options,
           executablePath: await chromium.default.executablePath(),
-          args: [...chromium.default.args, "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", ...(options.args || [])],
-          headless: true,
+          args: [
+            ...chromium.default.args,
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu',
+            '--memory-pressure-off',
+            '--max_old_space_size=2048'
+          ],
+          defaultViewport: chromium.default.defaultViewport,
+          headless: chromium.default.headless,
+          ignoreHTTPSErrors: true,
         }),
     };
   }
@@ -248,19 +284,12 @@ export async function POST(req: Request) {
     try {
       console.log('Starting browser launch...');
       console.log('Environment:', process.env.NODE_ENV);
+      console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
       
       const puppeteer = await getPuppeteer();
       
       browser = await puppeteer.launch({
         headless: true,
-        args: [
-          "--no-sandbox", 
-          "--disable-setuid-sandbox", 
-          "--disable-dev-shm-usage",
-          "--disable-background-timer-throttling",
-          "--disable-backgrounding-occluded-windows",
-          "--disable-renderer-backgrounding"
-        ],
       });
       
       console.log('Browser launched successfully');

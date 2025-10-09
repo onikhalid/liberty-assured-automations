@@ -290,7 +290,7 @@ export async function POST(req: Request) {
     await page.setContent(htmlContent, { waitUntil: "domcontentloaded", timeout: 15000 });
 
     const pdfBuffer = await page.pdf({
-      format: "A4",
+      format: "a4",
       printBackground: true,
       margin: { top: "30px", bottom: "30px" },
       timeout: 15000,

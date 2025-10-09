@@ -3,7 +3,8 @@
 import { useState } from 'react';
 
 export default function Home() {
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingLocal, setIsGeneratingLocal] = useState(false);
+  const [isGeneratingDeployed, setIsGeneratingDeployed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const sampleData = {
@@ -48,11 +49,11 @@ export default function Home() {
   };
 
   const handleGeneratePDF = async () => {
-    setIsGenerating(true);
+    setIsGeneratingLocal(true);
     setError(null);
 
     try {
-      console.log('Sending data:', sampleData);
+      console.log('Sending data to LOCAL:', sampleData);
       
       const response = await fetch('/api/generate-borrower-info-pdf', {
         method: 'POST',
@@ -74,18 +75,60 @@ export default function Home() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'customer-info.pdf';
+      link.download = 'customer-info-local.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      console.log('PDF generated successfully!');
+      console.log('Local PDF generated successfully!');
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.error('Error generating local PDF:', error);
       setError(error instanceof Error ? error.message : 'Unknown error occurred');
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingLocal(false);
+    }
+  };
+
+  const handleGenerateDeployedPDF = async () => {
+    setIsGeneratingDeployed(true);
+    setError(null);
+
+    try {
+      console.log('Sending data to DEPLOYED:', sampleData);
+      
+      const response = await fetch('https://liberty-assured-automations.vercel.app/api/generate-borrower-info-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(sampleData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! status: ${response.status}, details: ${errorData.details || errorData.error}`);
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'customer-info-deployed.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Deployed PDF generated successfully!');
+    } catch (error) {
+      console.error('Error generating deployed PDF:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error occurred');
+    } finally {
+      setIsGeneratingDeployed(false);
     }
   };
 
@@ -103,40 +146,76 @@ export default function Home() {
           </pre>
         </div>
 
-        <div className="text-center">
-          <button
-            onClick={handleGeneratePDF}
-            disabled={isGenerating}
-            className={`px-6 py-3 rounded-lg font-medium text-white ${
-              isGenerating 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
-            } transition-colors`}
-          >
-            {isGenerating ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Generating PDF...
-              </span>
-            ) : (
-              'Generate Test PDF'
-            )}
-          </button>
+        <div className="text-center space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={handleGeneratePDF}
+              disabled={isGeneratingLocal}
+              className={`px-6 py-3 rounded-lg font-medium text-white ${
+                isGeneratingLocal 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+              } transition-colors`}
+            >
+              {isGeneratingLocal ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Generating Local PDF...
+                </span>
+              ) : (
+                'Test Local API'
+              )}
+            </button>
+
+            <button
+              onClick={handleGenerateDeployedPDF}
+              disabled={isGeneratingDeployed}
+              className={`px-6 py-3 rounded-lg font-medium text-white ${
+                isGeneratingDeployed 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-green-600 hover:bg-green-700 active:bg-green-800'
+              } transition-colors`}
+            >
+              {isGeneratingDeployed ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Generating Deployed PDF...
+                </span>
+              ) : (
+                'Test Deployed API'
+              )}
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -147,8 +226,13 @@ export default function Home() {
         )}
 
         <div className="mt-8 text-center text-gray-600">
-          <p>Click the button above to test PDF generation with sample data.</p>
-          <p className="text-sm mt-2">The PDF will be automatically downloaded if successful.</p>
+          <p className="mb-2">
+            <strong>Blue button:</strong> Tests the local API endpoint (localhost:3000)
+          </p>
+          <p className="mb-2">
+            <strong>Green button:</strong> Tests the deployed API endpoint (liberty-assured-automations.vercel.app)
+          </p>
+          <p className="text-sm mt-4">The PDF will be automatically downloaded if successful.</p>
         </div>
       </div>
     </div>

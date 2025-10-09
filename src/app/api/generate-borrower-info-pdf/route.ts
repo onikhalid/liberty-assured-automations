@@ -4,46 +4,38 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const getPuppeteer = async () => {
-  // Always use puppeteer-core with @sparticuz/chromium for both local and production
-  const puppeteer = await import("puppeteer-core");
-  const chromium = await import("@sparticuz/chromium");
-  
   if (process.env.NODE_ENV === "development") {
-    // For local development, try to use system Chrome if available
+    // For local development, try to use local puppeteer with system Chrome
     try {
-      return {
-        launch: async (options: any) =>
-          puppeteer.default.launch({
-            ...options,
-            executablePath: process.platform === 'win32' 
-              ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-              : process.platform === 'darwin'
-              ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-              : '/usr/bin/google-chrome',
-            headless: true,
-          }),
-      };
+      const puppeteer = await import("puppeteer");
+      return puppeteer.default;
     } catch {
-      console.log('Local Chrome not found, falling back to chromium');
-      // Fallback to chromium
+      // Fallback to puppeteer-core with chromium for local development
+      console.log('Local puppeteer not found, using puppeteer-core with chromium');
+      const puppeteer = await import("puppeteer-core");
+      const chromium = await import("@sparticuz/chromium");
+      
       return {
         launch: async (options: any) =>
           puppeteer.default.launch({
             ...options,
             executablePath: await chromium.default.executablePath(),
-            args: [...chromium.default.args, "--hide-scrollbars", "--disable-web-security", ...(options.args || [])],
+            args: [...chromium.default.args, "--no-sandbox", "--disable-setuid-sandbox", ...(options.args || [])],
             headless: true,
           }),
       };
     }
   } else {
     // For production (Vercel), use @sparticuz/chromium
+    const puppeteer = await import("puppeteer-core");
+    const chromium = await import("@sparticuz/chromium");
+    
     return {
       launch: async (options: any) =>
         puppeteer.default.launch({
           ...options,
           executablePath: await chromium.default.executablePath(),
-          args: [...chromium.default.args, "--hide-scrollbars", "--disable-web-security", ...(options.args || [])],
+          args: [...chromium.default.args, "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", ...(options.args || [])],
           headless: true,
         }),
     };
@@ -261,7 +253,14 @@ export async function POST(req: Request) {
       
       browser = await puppeteer.launch({
         headless: true,
-        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+        args: [
+          "--no-sandbox", 
+          "--disable-setuid-sandbox", 
+          "--disable-dev-shm-usage",
+          "--disable-background-timer-throttling",
+          "--disable-backgrounding-occluded-windows",
+          "--disable-renderer-backgrounding"
+        ],
       });
       
       console.log('Browser launched successfully');
@@ -276,16 +275,8 @@ export async function POST(req: Request) {
 
     const page = await browser.newPage();
     
-    // Optimize page for memory efficiency
+    // Set viewport for consistent rendering
     await page.setViewport({ width: 1024, height: 768 });
-    await page.setRequestInterception(true);
-    page.on('request', (req: any) => {
-      if (req.resourceType() === 'image' || req.resourceType() === 'font') {
-        req.abort();
-      } else {
-        req.continue();
-      }
-    });
     
     await page.setContent(htmlContent, { waitUntil: "domcontentloaded", timeout: 15000 });
 

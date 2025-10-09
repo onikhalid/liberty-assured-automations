@@ -217,14 +217,26 @@ export async function POST(req: Request) {
         console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
         console.log('NODE_ENV:', process.env.NODE_ENV);
         
+        // Set chromium to use minimal resources
+        await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
+        
         const executablePath = await chromium.executablePath();
         console.log('Chromium executable path:', executablePath);
         
         browser = await puppeteer.launch({
-          args: chromium.args,
+          args: [
+            ...chromium.args,
+            '--memory-pressure-off',
+            '--max_old_space_size=1536',
+            '--disable-dev-shm-usage',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--single-process'
+          ],
           defaultViewport: chromium.defaultViewport,
           executablePath,
-          headless: true,
+          headless: chromium.headless === "shell" ? true : chromium.headless,
           ignoreHTTPSErrors: true,
         });
       } else {
@@ -232,7 +244,12 @@ export async function POST(req: Request) {
         console.log('Using local Chrome...');
         browser = await puppeteer.launch({
           headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-background-timer-throttling'
+          ],
           timeout: 30000
         });
       }
@@ -246,17 +263,30 @@ export async function POST(req: Request) {
     }
 
     const page = await browser.newPage();
-    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+    
+    // Optimize page for memory efficiency
+    await page.setViewport({ width: 1024, height: 768 });
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (req.resourceType() === 'image' || req.resourceType() === 'font') {
+        req.abort();
+      } else {
+        req.continue();
+      }
+    });
+    
+    await page.setContent(htmlContent, { waitUntil: "domcontentloaded", timeout: 15000 });
 
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
       margin: { top: "30px", bottom: "30px" },
+      timeout: 15000,
     });
 
     
     await browser.close();
-
+    
     return new Response(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {

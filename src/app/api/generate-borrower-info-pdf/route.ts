@@ -217,22 +217,22 @@ export async function POST(req: Request) {
         console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
         console.log('NODE_ENV:', process.env.NODE_ENV);
         
-        // Set chromium to use minimal resources
-        await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
-        
         const executablePath = await chromium.executablePath();
         console.log('Chromium executable path:', executablePath);
         
         browser = await puppeteer.launch({
           args: [
             ...chromium.args,
-            '--memory-pressure-off',
-            '--max_old_space_size=1536',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding',
-            '--single-process'
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--single-process',
+            '--disable-gpu',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor'
           ],
           defaultViewport: chromium.defaultViewport,
           executablePath,

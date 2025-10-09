@@ -1,9 +1,54 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
-import chromium from "@sparticuz/chromium";
-import puppeteer from "puppeteer-core";
 
 export const runtime = "nodejs";
+
+const getPuppeteer = async () => {
+  // Always use puppeteer-core with @sparticuz/chromium for both local and production
+  const puppeteer = await import("puppeteer-core");
+  const chromium = await import("@sparticuz/chromium");
+  
+  if (process.env.NODE_ENV === "development") {
+    // For local development, try to use system Chrome if available
+    try {
+      return {
+        launch: async (options: any) =>
+          puppeteer.default.launch({
+            ...options,
+            executablePath: process.platform === 'win32' 
+              ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+              : process.platform === 'darwin'
+              ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+              : '/usr/bin/google-chrome',
+            headless: true,
+          }),
+      };
+    } catch {
+      console.log('Local Chrome not found, falling back to chromium');
+      // Fallback to chromium
+      return {
+        launch: async (options: any) =>
+          puppeteer.default.launch({
+            ...options,
+            executablePath: await chromium.default.executablePath(),
+            args: [...chromium.default.args, "--hide-scrollbars", "--disable-web-security", ...(options.args || [])],
+            headless: true,
+          }),
+      };
+    }
+  } else {
+    // For production (Vercel), use @sparticuz/chromium
+    return {
+      launch: async (options: any) =>
+        puppeteer.default.launch({
+          ...options,
+          executablePath: await chromium.default.executablePath(),
+          args: [...chromium.default.args, "--hide-scrollbars", "--disable-web-security", ...(options.args || [])],
+          headless: true,
+        }),
+    };
+  }
+};
 
 export async function POST(req: Request) {
   try {
@@ -83,7 +128,7 @@ export async function POST(req: Request) {
         </style>
       </head>
       <body>
-        <h1>KYC FORM</h1>
+        <h1>BORROWER INFO</h1>
 
         <!-- Borrower Info -->
         <div class="section">
@@ -209,50 +254,17 @@ export async function POST(req: Request) {
     let browser;
     
     try {
-      const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+      console.log('Starting browser launch...');
+      console.log('Environment:', process.env.NODE_ENV);
       
-      if (isProduction) {
-        // Running on Vercel production - use @sparticuz/chromium
-        console.log('Using Vercel Chromium...');
-        console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
-        console.log('NODE_ENV:', process.env.NODE_ENV);
-        
-        const executablePath = await chromium.executablePath();
-        console.log('Chromium executable path:', executablePath);
-        
-        browser = await puppeteer.launch({
-          args: [
-            ...chromium.args,
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor'
-          ],
-          defaultViewport: chromium.defaultViewport,
-          executablePath,
-          headless: chromium.headless === "shell" ? true : chromium.headless,
-          ignoreHTTPSErrors: true,
-        });
-      } else {
-        // Running locally - use local Chrome
-        console.log('Using local Chrome...');
-        browser = await puppeteer.launch({
-          headless: true,
-          args: [
-            '--no-sandbox', 
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-background-timer-throttling'
-          ],
-          timeout: 30000
-        });
-      }
+      const puppeteer = await getPuppeteer();
+      
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+      });
+      
+      console.log('Browser launched successfully');
     } catch (browserError) {
       console.error('Browser launch failed:', browserError);
       if (browserError instanceof Error) {
@@ -267,7 +279,7 @@ export async function POST(req: Request) {
     // Optimize page for memory efficiency
     await page.setViewport({ width: 1024, height: 768 });
     await page.setRequestInterception(true);
-    page.on('request', (req) => {
+    page.on('request', (req: any) => {
       if (req.resourceType() === 'image' || req.resourceType() === 'font') {
         req.abort();
       } else {
@@ -301,4 +313,16 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// Handle CORS preflight requests
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  });
 }

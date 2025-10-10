@@ -1,8 +1,8 @@
 {
   "functions": {
-    "src/app/api/generate-borrower-info-pdf/route.ts": {
-      "memory": 2048,
-      "maxDuration": 30
+    "app/api/generate-borrower-info-pdf/route.ts": {
+      "memory": 1008,
+      "maxDuration": 60
     }
   },
   "env": {
@@ -13,8 +13,14 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
       ]
     }
   ]

@@ -4,10 +4,8 @@ const nextConfig: NextConfig = {
   // Optimize for serverless deployment
   output: 'standalone',
   
-  // Enable experimental features for better performance
-  experimental: {
-    serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
-  },
+  // Tell Next to not bundle these server-only packages
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium"],
   
   // Configure headers for CORS (allow other apps to call this API)
   async headers() {

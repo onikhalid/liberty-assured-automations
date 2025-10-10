@@ -1,90 +1,39 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextResponse } from "next/server";
-
-export const runtime = "nodejs";
+import { type NextRequest, NextResponse } from "next/server";
 
 const getPuppeteer = async () => {
-  // Always use puppeteer-core with @sparticuz/chromium for consistency
-  const puppeteer = await import("puppeteer-core");
-  const chromium = await import("@sparticuz/chromium");
-  
   if (process.env.NODE_ENV === "development") {
-    // For local development, try to use system Chrome if available
-    const isWindows = process.platform === 'win32';
-    const isMac = process.platform === 'darwin';
-    const isLinux = process.platform === 'linux';
-    
-    let localChromePath = '';
-    if (isWindows) {
-      localChromePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-    } else if (isMac) {
-      localChromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-    } else if (isLinux) {
-      localChromePath = '/usr/bin/google-chrome';
-    }
-    
-    try {
-      // Try to use local Chrome first
-      return {
-        launch: async (options: any) =>
-          puppeteer.default.launch({
-            ...options,
-            executablePath: localChromePath,
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-          }),
-      };
-    } catch {
-      console.log('Local Chrome not found, using @sparticuz/chromium');
-      // Fallback to chromium
-      return {
-        launch: async (options: any) =>
-          puppeteer.default.launch({
-            ...options,
-            executablePath: await chromium.default.executablePath(),
-            args: [...chromium.default.args, "--no-sandbox", "--disable-setuid-sandbox"],
-            headless: true,
-          }),
-      };
-    }
+    const puppeteer = await import("puppeteer");
+    return puppeteer.default;
   } else {
-    // For production (Vercel), use @sparticuz/chromium with more conservative settings
-    // Set chromium flags for better compatibility
-    await chromium.default.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
-    
+    const puppeteer = await import("puppeteer-core");
+    const chromium = await import("@sparticuz/chromium");
     return {
       launch: async (options: any) =>
         puppeteer.default.launch({
           ...options,
-          executablePath: await chromium.default.executablePath(),
+          executablePath: await chromium.default.executablePath(), // Added await back to fix Promise error
           args: [
             ...chromium.default.args,
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--single-process',
-            '--disable-gpu',
-            '--memory-pressure-off',
-            '--max_old_space_size=2048'
+            "--hide-scrollbars",
+            "--disable-web-security",
           ],
-          defaultViewport: chromium.default.defaultViewport,
-          headless: chromium.default.headless,
-          ignoreHTTPSErrors: true,
+          headless: true,
         }),
     };
   }
 };
 
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    console.log('Starting PDF generation...');
-    console.log('Environment:', process.env.VERCEL_ENV || 'local');
-    console.log('Node version:', process.version);
-    
-    const data = await req.json();
+    const data = await request.json();
+    const puppeteer = await getPuppeteer();
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
 
     const htmlContent = `
     <html>
@@ -279,70 +228,28 @@ export async function POST(req: Request) {
     </html>
     `;
 
-    let browser;
-    
-    try {
-      console.log('Starting browser launch...');
-      console.log('Environment:', process.env.NODE_ENV);
-      console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
-      
-      const puppeteer = await getPuppeteer();
-      
-      browser = await puppeteer.launch({
-        headless: true,
-      });
-      
-      console.log('Browser launched successfully');
-    } catch (browserError) {
-      console.error('Browser launch failed:', browserError);
-      if (browserError instanceof Error) {
-        console.error('Browser error stack:', browserError.stack);
-      }
-      const errorMessage = browserError instanceof Error ? browserError.message : String(browserError);
-      throw new Error(`Failed to launch browser: ${errorMessage}`);
-    }
+    await page.setContent(htmlContent);
 
-    const page = await browser.newPage();
-    
-    // Set viewport for consistent rendering
-    await page.setViewport({ width: 1024, height: 768 });
-    
-    await page.setContent(htmlContent, { waitUntil: "domcontentloaded", timeout: 15000 });
-
-    const pdfBuffer = await page.pdf({
+    const pdf = await page.pdf({
       format: "a4",
       printBackground: true,
-      margin: { top: "30px", bottom: "30px" },
-      timeout: 15000,
+      margin: { top: "0.8cm", right: "0.8cm", bottom: "0.8cm", left: "0.8cm" },
     });
 
-    
     await browser.close();
-    
-    return new Response(Buffer.from(pdfBuffer), {
+
+    return new NextResponse(new Uint8Array(pdf), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": "inline; filename=customer-info.pdf",
+        "Content-Disposition": `attachment; filename=${data.obligorName ? data.obligorName.replace(/[^a-zA-Z0-9]/g, '_') : 'borrower'}-info.pdf`,
       },
     });
   } catch (error: any) {
-    console.error("PDF generation failed:", error);
+    console.error("Error generating PDF:", error);
     return NextResponse.json(
-      { error: "Failed to generate PDF", details: error.message },
+      { error: "PDF generation failed", details: error.message },
       { status: 500 }
     );
   }
-}
-
-// Handle CORS preflight requests
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
 }

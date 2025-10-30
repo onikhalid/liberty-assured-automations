@@ -317,7 +317,7 @@ export async function POST(request: NextRequest) {
 
         .info-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -476,6 +476,11 @@ export async function POST(request: NextRequest) {
                 flex-direction: column;
                 gap: 15px;
             }
+            .header-meta {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 15px;
+            }
         }
     </style>
 </head>
@@ -483,7 +488,7 @@ export async function POST(request: NextRequest) {
     <div class="container">
         <div class="header">
             <h1>KYC FORM</h1>
-            <div class="meta">
+            <div class="meta header-meta">
                 <div class="meta-item">
                     <span class="meta-label">Region</span>
                     <span class="meta-value">${processedData.region || ''}</span>

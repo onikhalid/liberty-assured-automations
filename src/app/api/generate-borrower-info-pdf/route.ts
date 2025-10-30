@@ -60,16 +60,61 @@ const getPuppeteer = async () => {
   }
 };
 
+// Helper function to convert Google Drive URLs to direct download URLs
+const convertGoogleDriveUrl = (url: string): string => {
+  if (!url || !url.includes('drive.google.com')) {
+    return url;
+  }
+  
+  // Extract file ID from Google Drive URL
+  const match = url.match(/\/d\/([a-zA-Z0-9-_]+)|[?&]id=([a-zA-Z0-9-_]+)/);
+  const fileId = match ? (match[1] || match[2]) : null;
+  
+  if (fileId) {
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+  
+  return url;
+};
+
 export async function POST(request: NextRequest) {
+  let browser;
+  
   try {
+    console.log("Starting PDF generation...");
     const data: BorrowerKYCData = await request.json();
+    
+    // Convert all Google Drive URLs to direct download URLs
+    const processedData = {
+      ...data,
+      borrower_image_url: convertGoogleDriveUrl(data.borrower_image_url),
+      utility_bill_url: convertGoogleDriveUrl(data.utility_bill_url),
+      owner_with_lo_url: convertGoogleDriveUrl(data.owner_with_lo_url),
+      shop_frontage_url: convertGoogleDriveUrl(data.shop_frontage_url),
+      guarantor_image_url: convertGoogleDriveUrl(data.guarantor_image_url),
+      authority_to_seize_url: convertGoogleDriveUrl(data.authority_to_seize_url),
+      shop_video_url: convertGoogleDriveUrl(data.shop_video_url),
+    };
+    
+    console.log("URLs converted, launching browser...");
     const puppeteer = await getPuppeteer();
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox", 
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-web-security",
+        "--disable-features=VizDisplayCompositor"
+      ],
     });
 
+    console.log("Browser launched, creating page...");
     const page = await browser.newPage();
+    
+    // Set longer timeouts
+    page.setDefaultTimeout(60000);
+    page.setDefaultNavigationTimeout(60000);
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -389,15 +434,15 @@ export async function POST(request: NextRequest) {
             <div class="meta">
                 <div class="meta-item">
                     <span class="meta-label">Region</span>
-                    <span class="meta-value">${data.region || ''}</span>
+                    <span class="meta-value">${processedData.region || ''}</span>
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Branch</span>
-                    <span class="meta-value">${data.branch || ''}</span>
+                    <span class="meta-value">${processedData.branch || ''}</span>
                 </div>
                 <div class="meta-item">
                     <span class="meta-label">Loan Type</span>
-                    <span class="meta-value">${data.loan_type || ''}</span>
+                    <span class="meta-value">${processedData.loan_type || ''}</span>
                 </div>
             </div>
         </div>
@@ -407,19 +452,19 @@ export async function POST(request: NextRequest) {
             <div class="loan-summary">
                 <div class="loan-stat">
                     <div class="loan-stat-label">Loan Amount</div>
-                    <div class="loan-stat-value">${data.loan_amount || ''}</div>
+                    <div class="loan-stat-value">${processedData.loan_amount || ''}</div>
                 </div>
                 <div class="loan-stat">
                     <div class="loan-stat-label">Tenor</div>
-                    <div class="loan-stat-value">${data.tenor || ''}</div>
+                    <div class="loan-stat-value">${processedData.tenor || ''}</div>
                 </div>
                 <div class="loan-stat">
                     <div class="loan-stat-label">Daily Repayment</div>
-                    <div class="loan-stat-value">${data.daily_repayment || ''}</div>
+                    <div class="loan-stat-value">${processedData.daily_repayment || ''}</div>
                 </div>
                 <div class="loan-stat">
                     <div class="loan-stat-label">KYC Status</div>
-                    <div class="loan-stat-value">${data.kyc_status || ''}</div>
+                    <div class="loan-stat-value">${processedData.kyc_status || ''}</div>
                 </div>
             </div>
 
@@ -428,32 +473,32 @@ export async function POST(request: NextRequest) {
                 <h2 class="section-title">Obligor/Borrower Information</h2>
                 
                 <div class="profile-card">
-                    <a href="${data.borrower_image_url || '#'}" target="_blank" class="profile-image-link">
-                        <img src="${data.borrower_image_url || ''}" alt="Borrower" class="profile-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23667eea%22 width=%22200%22 height=%22200%22/%3E%3Ctext fill=%22white%22 font-family=%22Arial%22 font-size=%2280%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EB%3C/text%3E%3C/svg%3E'">
+                    <a href="${processedData.borrower_image_url || '#'}" target="_blank" class="profile-image-link">
+                        <img src="${processedData.borrower_image_url || ''}" alt="Borrower" class="profile-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23667eea%22 width=%22200%22 height=%22200%22/%3E%3Ctext fill=%22white%22 font-family=%22Arial%22 font-size=%2280%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EB%3C/text%3E%3C/svg%3E'">
                     </a>
                     <div class="profile-details">
-                        <div class="profile-name">${data.obligor_name || ''}</div>
+                        <div class="profile-name">${processedData.obligor_name || ''}</div>
                         <div class="profile-role">Primary Borrower/Obligor</div>
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>
-                                <div class="info-value">${data.obligor_phone_number || ''}</div>
+                                <div class="info-value">${processedData.obligor_phone_number || ''}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">BVN/NIN Details</div>
-                                <div class="info-value">${data.bvn_nin_details || ''}</div>
+                                <div class="info-value">${processedData.bvn_nin_details || ''}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Business Type</div>
-                                <div class="info-value">${data.business_type || ''}</div>
+                                <div class="info-value">${processedData.business_type || ''}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">In-Store Stock</div>
-                                <div class="info-value">${data.in_store_stock || ''}</div>
+                                <div class="info-value">${processedData.in_store_stock || ''}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Business Ownership Validation</div>
-                                <div class="info-value">${data.business_ownership_validation || ''}</div>
+                                <div class="info-value">${processedData.business_ownership_validation || ''}</div>
                             </div>
                         </div>
                     </div>
@@ -462,47 +507,47 @@ export async function POST(request: NextRequest) {
                 <div class="info-grid">
                     <div class="info-item">
                         <div class="info-label">Home Address</div>
-                        <div class="info-value">${data.obligor_home_address || ''}</div>
+                        <div class="info-value">${processedData.obligor_home_address || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Nearest Bus Stop (Home)</div>
-                        <div class="info-value">${data.home_nearest_bus_stop || ''}</div>
+                        <div class="info-value">${processedData.home_nearest_bus_stop || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Landmark (Home)</div>
-                        <div class="info-value">${data.home_landmark || ''}</div>
+                        <div class="info-value">${processedData.home_landmark || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Shop Address</div>
-                        <div class="info-value">${data.shop_address || ''}</div>
+                        <div class="info-value">${processedData.shop_address || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Nearest Bus Stop (Shop)</div>
-                        <div class="info-value">${data.shop_nearest_bus_stop || ''}</div>
+                        <div class="info-value">${processedData.shop_nearest_bus_stop || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Landmark (Shop)</div>
-                        <div class="info-value">${data.shop_landmark || ''}</div>
+                        <div class="info-value">${processedData.shop_landmark || ''}</div>
                     </div>
                 </div>
 
                 <h3 style="font-size: 18px; font-weight: 600; color: #2d3748; margin-top: 30px; margin-bottom: 15px;">Verification Documents</h3>
                 <div class="images-grid">
                     <div class="image-card">
-                        <a href="${data.utility_bill_url || '#'}" target="_blank">
-                            <img src="${data.utility_bill_url || ''}" alt="Utility Bill" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EUtility Bill%3C/text%3E%3C/svg%3E'">
+                        <a href="${processedData.utility_bill_url || '#'}" target="_blank">
+                            <img src="${processedData.utility_bill_url || ''}" alt="Utility Bill" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EUtility Bill%3C/text%3E%3C/svg%3E'">
                         </a>
                         <div class="image-label">Utility Bill</div>
                     </div>
                     <div class="image-card">
-                        <a href="${data.owner_with_lo_url || '#'}" target="_blank">
-                            <img src="${data.owner_with_lo_url || ''}" alt="Owner with LO" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EOwner %26 LO%3C/text%3E%3C/svg%3E'">
+                        <a href="${processedData.owner_with_lo_url || '#'}" target="_blank">
+                            <img src="${processedData.owner_with_lo_url || ''}" alt="Owner with LO" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EOwner %26 LO%3C/text%3E%3C/svg%3E'">
                         </a>
                         <div class="image-label">Business Owner with Loan Officer</div>
                     </div>
                     <div class="image-card">
-                        <a href="${data.shop_frontage_url || '#'}" target="_blank">
-                            <img src="${data.shop_frontage_url || ''}" alt="Shop Frontage" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EShop Front%3C/text%3E%3C/svg%3E'">
+                        <a href="${processedData.shop_frontage_url || '#'}" target="_blank">
+                            <img src="${processedData.shop_frontage_url || ''}" alt="Shop Frontage" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EShop Front%3C/text%3E%3C/svg%3E'">
                         </a>
                         <div class="image-label">Shop Frontage</div>
                     </div>
@@ -514,20 +559,20 @@ export async function POST(request: NextRequest) {
                 <h2 class="section-title">Guarantor Information</h2>
                 
                 <div class="profile-card">
-                    <a href="${data.guarantor_image_url || '#'}" target="_blank" class="profile-image-link">
-                        <img src="${data.guarantor_image_url || ''}" alt="Guarantor" class="profile-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23764ba2%22 width=%22200%22 height=%22200%22/%3E%3Ctext fill=%22white%22 font-family=%22Arial%22 font-size=%2280%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EG%3C/text%3E%3C/svg%3E'">
+                    <a href="${processedData.guarantor_image_url || '#'}" target="_blank" class="profile-image-link">
+                        <img src="${processedData.guarantor_image_url || ''}" alt="Guarantor" class="profile-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23764ba2%22 width=%22200%22 height=%22200%22/%3E%3Ctext fill=%22white%22 font-family=%22Arial%22 font-size=%2280%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EG%3C/text%3E%3C/svg%3E'">
                     </a>
                     <div class="profile-details">
-                        <div class="profile-name">${data.guarantor_name || ''}</div>
+                        <div class="profile-name">${processedData.guarantor_name || ''}</div>
                         <div class="profile-role">Guarantor</div>
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>
-                                <div class="info-value">${data.guarantor_phone_number || ''}</div>
+                                <div class="info-value">${processedData.guarantor_phone_number || ''}</div>
                             </div>
                             <div class="info-item">
                                 <div class="info-label">Occupation</div>
-                                <div class="info-value">${data.guarantor_occupation || ''}</div>
+                                <div class="info-value">${processedData.guarantor_occupation || ''}</div>
                             </div>
                         </div>
                     </div>
@@ -536,19 +581,19 @@ export async function POST(request: NextRequest) {
                 <div class="info-grid">
                     <div class="info-item">
                         <div class="info-label">Home Address</div>
-                        <div class="info-value">${data.guarantor_home_address || ''}</div>
+                        <div class="info-value">${processedData.guarantor_home_address || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Nearest Bus Stop</div>
-                        <div class="info-value">${data.guarantor_nearest_bus_stop || ''}</div>
+                        <div class="info-value">${processedData.guarantor_nearest_bus_stop || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Landmark</div>
-                        <div class="info-value">${data.guarantor_landmark || ''}</div>
+                        <div class="info-value">${processedData.guarantor_landmark || ''}</div>
                     </div>
                     <div class="info-item">
                         <div class="info-label">Work Address</div>
-                        <div class="info-value">${data.guarantor_work_address || ''}</div>
+                        <div class="info-value">${processedData.guarantor_work_address || ''}</div>
                     </div>
                 </div>
             </div>
@@ -559,7 +604,7 @@ export async function POST(request: NextRequest) {
                 <div class="info-grid">
                     <div class="info-item">
                         <div class="info-label">Authority to Seize</div>
-                        <div class="info-value"><a href="${data.authority_to_seize_url || '#'}" target="_blank">View Document →</a></div>
+                        <div class="info-value"><a href="${processedData.authority_to_seize_url || '#'}" target="_blank">View Document →</a></div>
                     </div>
                 </div>
             </div>
@@ -567,7 +612,7 @@ export async function POST(request: NextRequest) {
             <!-- Shop Video -->
             <div class="section">
                 <h2 class="section-title">Shop Verification Video</h2>
-                <a href="${data.shop_video_url || '#'}" target="_blank" class="video-thumbnail">
+                <a href="${processedData.shop_video_url || '#'}" target="_blank" class="video-thumbnail">
                     <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450'%3E%3Crect fill='%23000' width='800' height='450'/%3E%3Ctext fill='%23fff' font-family='Arial' font-size='24' x='50%25' y='45%25' text-anchor='middle'%3EObligor Shop Video%3C/text%3E%3Ctext fill='%23888' font-family='Arial' font-size='16' x='50%25' y='55%25' text-anchor='middle'%3EClick to view%3C/text%3E%3C/svg%3E" alt="Video Thumbnail">
                 </a>
             </div>
@@ -576,25 +621,50 @@ export async function POST(request: NextRequest) {
 </body>
 </html>`;
 
+    console.log("Setting HTML content...");
     await page.setContent(htmlContent);
+    
+    console.log("Waiting for page to load...");
+    // Wait for the page to fully load, but don't wait indefinitely for images
+    try {
+      await page.waitForSelector('body', { timeout: 15000 });
+      // Give a moment for images to attempt loading
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    } catch {
+      console.log("Page load timeout reached, proceeding with PDF generation");
+    }
 
+    console.log("Generating PDF...");
     const pdf = await page.pdf({
       format: "a4",
       printBackground: true,
       margin: { top: "0.8cm", right: "0.8cm", bottom: "0.8cm", left: "0.8cm" },
+      preferCSSPageSize: true,
     });
 
+    console.log("PDF generated successfully, closing browser...");
     await browser.close();
 
+    console.log("Returning PDF response...");
     return new NextResponse(new Uint8Array(pdf), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=${data.obligor_name ? data.obligor_name.replace(/[^a-zA-Z0-9]/g, '_') : 'borrower'}-info.pdf`,
+        "Content-Disposition": `attachment; filename=${processedData.obligor_name ? processedData.obligor_name.replace(/[^a-zA-Z0-9]/g, '_') : 'borrower'}-info.pdf`,
       },
     });
   } catch (error: any) {
     console.error("Error generating PDF:", error);
+    
+    // Ensure browser is closed even if there's an error
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeError) {
+        console.error("Error closing browser:", closeError);
+      }
+    }
+    
     return NextResponse.json(
       { error: "PDF generation failed", details: error.message },
       { status: 500 }

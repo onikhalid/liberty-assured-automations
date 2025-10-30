@@ -77,6 +77,11 @@ const convertGoogleDriveUrl = (url: string): string => {
   return url;
 };
 
+// Helper function to create placeholder image data URL
+const createPlaceholderImage = (text: string, color = '#667eea'): string => {
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect fill='${encodeURIComponent(color)}' width='300' height='300'/%3E%3Ctext fill='white' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(text)}%3C/text%3E%3C/svg%3E`;
+};
+
 export async function POST(request: NextRequest) {
   let browser;
   
@@ -84,16 +89,16 @@ export async function POST(request: NextRequest) {
     console.log("Starting PDF generation...");
     const data: BorrowerKYCData = await request.json();
     
-    // Convert all Google Drive URLs to direct download URLs
+    // Use placeholder images instead of external URLs to prevent timeouts
     const processedData = {
       ...data,
-      borrower_image_url: convertGoogleDriveUrl(data.borrower_image_url),
-      utility_bill_url: convertGoogleDriveUrl(data.utility_bill_url),
-      owner_with_lo_url: convertGoogleDriveUrl(data.owner_with_lo_url),
-      shop_frontage_url: convertGoogleDriveUrl(data.shop_frontage_url),
-      guarantor_image_url: convertGoogleDriveUrl(data.guarantor_image_url),
-      authority_to_seize_url: convertGoogleDriveUrl(data.authority_to_seize_url),
-      shop_video_url: convertGoogleDriveUrl(data.shop_video_url),
+      borrower_image_url: createPlaceholderImage('Borrower Photo', '#667eea'),
+      utility_bill_url: createPlaceholderImage('Utility Bill', '#4a5568'),
+      owner_with_lo_url: createPlaceholderImage('Owner with LO', '#4a5568'),
+      shop_frontage_url: createPlaceholderImage('Shop Frontage', '#4a5568'),
+      guarantor_image_url: createPlaceholderImage('Guarantor Photo', '#764ba2'),
+      authority_to_seize_url: convertGoogleDriveUrl(data.authority_to_seize_url), // Keep as link
+      shop_video_url: convertGoogleDriveUrl(data.shop_video_url), // Keep as link
     };
     
     console.log("URLs converted, launching browser...");
@@ -112,9 +117,9 @@ export async function POST(request: NextRequest) {
     console.log("Browser launched, creating page...");
     const page = await browser.newPage();
     
-    // Set longer timeouts
-    page.setDefaultTimeout(60000);
-    page.setDefaultNavigationTimeout(60000);
+    // Set shorter, more realistic timeouts
+    page.setDefaultTimeout(30000);
+    page.setDefaultNavigationTimeout(30000);
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -473,12 +478,13 @@ export async function POST(request: NextRequest) {
                 <h2 class="section-title">Obligor/Borrower Information</h2>
                 
                 <div class="profile-card">
-                    <a href="${processedData.borrower_image_url || '#'}" target="_blank" class="profile-image-link">
-                        <img src="${processedData.borrower_image_url || ''}" alt="Borrower" class="profile-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23667eea%22 width=%22200%22 height=%22200%22/%3E%3Ctext fill=%22white%22 font-family=%22Arial%22 font-size=%2280%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EB%3C/text%3E%3C/svg%3E'">
-                    </a>
+                    <div class="profile-image-link">
+                        <img src="${processedData.borrower_image_url || ''}" alt="Borrower" class="profile-image">
+                    </div>
                     <div class="profile-details">
                         <div class="profile-name">${processedData.obligor_name || ''}</div>
                         <div class="profile-role">Primary Borrower/Obligor</div>
+                        ${data.borrower_image_url ? `<div style="margin-bottom: 15px;"><a href="${convertGoogleDriveUrl(data.borrower_image_url)}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>
@@ -534,22 +540,25 @@ export async function POST(request: NextRequest) {
                 <h3 style="font-size: 18px; font-weight: 600; color: #2d3748; margin-top: 30px; margin-bottom: 15px;">Verification Documents</h3>
                 <div class="images-grid">
                     <div class="image-card">
-                        <a href="${processedData.utility_bill_url || '#'}" target="_blank">
-                            <img src="${processedData.utility_bill_url || ''}" alt="Utility Bill" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EUtility Bill%3C/text%3E%3C/svg%3E'">
-                        </a>
-                        <div class="image-label">Utility Bill</div>
+                        <img src="${processedData.utility_bill_url || ''}" alt="Utility Bill">
+                        <div class="image-label">
+                            Utility Bill
+                            ${data.utility_bill_url ? `<br><a href="${convertGoogleDriveUrl(data.utility_bill_url)}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
+                        </div>
                     </div>
                     <div class="image-card">
-                        <a href="${processedData.owner_with_lo_url || '#'}" target="_blank">
-                            <img src="${processedData.owner_with_lo_url || ''}" alt="Owner with LO" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EOwner %26 LO%3C/text%3E%3C/svg%3E'">
-                        </a>
-                        <div class="image-label">Business Owner with Loan Officer</div>
+                        <img src="${processedData.owner_with_lo_url || ''}" alt="Owner with LO">
+                        <div class="image-label">
+                            Business Owner with Loan Officer
+                            ${data.owner_with_lo_url ? `<br><a href="${convertGoogleDriveUrl(data.owner_with_lo_url)}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
+                        </div>
                     </div>
                     <div class="image-card">
-                        <a href="${processedData.shop_frontage_url || '#'}" target="_blank">
-                            <img src="${processedData.shop_frontage_url || ''}" alt="Shop Frontage" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22%3E%3Crect fill=%22%23e2e8f0%22 width=%22300%22 height=%22300%22/%3E%3Ctext fill=%22%23718096%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EShop Front%3C/text%3E%3C/svg%3E'">
-                        </a>
-                        <div class="image-label">Shop Frontage</div>
+                        <img src="${processedData.shop_frontage_url || ''}" alt="Shop Frontage">
+                        <div class="image-label">
+                            Shop Frontage
+                            ${data.shop_frontage_url ? `<br><a href="${convertGoogleDriveUrl(data.shop_frontage_url)}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -559,12 +568,13 @@ export async function POST(request: NextRequest) {
                 <h2 class="section-title">Guarantor Information</h2>
                 
                 <div class="profile-card">
-                    <a href="${processedData.guarantor_image_url || '#'}" target="_blank" class="profile-image-link">
-                        <img src="${processedData.guarantor_image_url || ''}" alt="Guarantor" class="profile-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23764ba2%22 width=%22200%22 height=%22200%22/%3E%3Ctext fill=%22white%22 font-family=%22Arial%22 font-size=%2280%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EG%3C/text%3E%3C/svg%3E'">
-                    </a>
+                    <div class="profile-image-link">
+                        <img src="${processedData.guarantor_image_url || ''}" alt="Guarantor" class="profile-image">
+                    </div>
                     <div class="profile-details">
                         <div class="profile-name">${processedData.guarantor_name || ''}</div>
                         <div class="profile-role">Guarantor</div>
+                        ${data.guarantor_image_url ? `<div style="margin-bottom: 15px;"><a href="${convertGoogleDriveUrl(data.guarantor_image_url)}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>
@@ -622,19 +632,10 @@ export async function POST(request: NextRequest) {
 </html>`;
 
     console.log("Setting HTML content...");
-    await page.setContent(htmlContent);
+    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
     
-    console.log("Waiting for page to load...");
-    // Wait for the page to fully load, but don't wait indefinitely for images
-    try {
-      await page.waitForSelector('body', { timeout: 15000 });
-      // Give a moment for images to attempt loading
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    } catch {
-      console.log("Page load timeout reached, proceeding with PDF generation");
-    }
-
-    console.log("Generating PDF...");
+    console.log("Content loaded, generating PDF immediately...");
+    // Don't wait for images or external resources - generate PDF immediately
     const pdf = await page.pdf({
       format: "a4",
       printBackground: true,

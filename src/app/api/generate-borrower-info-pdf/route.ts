@@ -82,24 +82,71 @@ const createPlaceholderImage = (text: string, color = '#667eea'): string => {
   return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect fill='${encodeURIComponent(color)}' width='300' height='300'/%3E%3Ctext fill='white' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(text)}%3C/text%3E%3C/svg%3E`;
 };
 
+// Helper to fetch an image and return a data URL (base64). Falls back to null on error/timeouts.
+const fetchImageAsDataUrl = async (url: string, label: string): Promise<string | null> => {
+    try {
+        if (!url) return null;
+        const resolvedUrl = convertGoogleDriveUrl(url);
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout per image
+        const res = await fetch(resolvedUrl, { redirect: 'follow', signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timeout);
+
+        if (!res.ok) {
+            console.warn(`Image fetch failed (${label}):`, res.status, res.statusText);
+            return null;
+        }
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.startsWith('image/')) {
+            console.warn(`Not an image (${label}):`, contentType);
+            return null;
+        }
+        const buffer = await res.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString('base64');
+        return `data:${contentType};base64,${base64}`;
+    } catch (e) {
+        console.warn(`Error fetching image (${label}):`, (e as Error).message);
+        return null;
+    }
+};
+
 export async function POST(request: NextRequest) {
   let browser;
   
-  try {
+    try {
     console.log("Starting PDF generation...");
     const data: BorrowerKYCData = await request.json();
     
-    // Use placeholder images instead of external URLs to prevent timeouts
-    const processedData = {
-      ...data,
-      borrower_image_url: createPlaceholderImage('Borrower Photo', '#667eea'),
-      utility_bill_url: createPlaceholderImage('Utility Bill', '#4a5568'),
-      owner_with_lo_url: createPlaceholderImage('Owner with LO', '#4a5568'),
-      shop_frontage_url: createPlaceholderImage('Shop Frontage', '#4a5568'),
-      guarantor_image_url: createPlaceholderImage('Guarantor Photo', '#764ba2'),
-      authority_to_seize_url: convertGoogleDriveUrl(data.authority_to_seize_url), // Keep as link
-      shop_video_url: convertGoogleDriveUrl(data.shop_video_url), // Keep as link
-    };
+        // Attempt to inline images as data URLs; fall back to placeholders
+        const borrowerImageSrc = (await fetchImageAsDataUrl(data.borrower_image_url, 'Borrower Photo'))
+            ?? createPlaceholderImage('Borrower Photo', '#667eea');
+        const guarantorImageSrc = (await fetchImageAsDataUrl(data.guarantor_image_url, 'Guarantor Photo'))
+            ?? createPlaceholderImage('Guarantor Photo', '#764ba2');
+        const utilityBillSrc = (await fetchImageAsDataUrl(data.utility_bill_url, 'Utility Bill'))
+            ?? createPlaceholderImage('Utility Bill', '#4a5568');
+        const ownerWithLoSrc = (await fetchImageAsDataUrl(data.owner_with_lo_url, 'Owner with LO'))
+            ?? createPlaceholderImage('Owner with LO', '#4a5568');
+        const shopFrontageSrc = (await fetchImageAsDataUrl(data.shop_frontage_url, 'Shop Frontage'))
+            ?? createPlaceholderImage('Shop Frontage', '#4a5568');
+
+        const processedData = {
+            ...data,
+            // inline image sources
+            borrower_image_src: borrowerImageSrc,
+            guarantor_image_src: guarantorImageSrc,
+            utility_bill_src: utilityBillSrc,
+            owner_with_lo_src: ownerWithLoSrc,
+            shop_frontage_src: shopFrontageSrc,
+            // preserve original links (converted for Drive where possible)
+            borrower_image_link: convertGoogleDriveUrl(data.borrower_image_url),
+            guarantor_image_link: convertGoogleDriveUrl(data.guarantor_image_url),
+            utility_bill_link: convertGoogleDriveUrl(data.utility_bill_url),
+            owner_with_lo_link: convertGoogleDriveUrl(data.owner_with_lo_url),
+            shop_frontage_link: convertGoogleDriveUrl(data.shop_frontage_url),
+            authority_to_seize_url: convertGoogleDriveUrl(data.authority_to_seize_url),
+            shop_video_url: convertGoogleDriveUrl(data.shop_video_url),
+        } as any;
     
     console.log("URLs converted, launching browser...");
     const puppeteer = await getPuppeteer();
@@ -479,12 +526,12 @@ export async function POST(request: NextRequest) {
                 
                 <div class="profile-card">
                     <div class="profile-image-link">
-                        <img src="${processedData.borrower_image_url || ''}" alt="Borrower" class="profile-image">
+                        <img src="${(processedData as any).borrower_image_src || ''}" alt="Borrower" class="profile-image">
                     </div>
                     <div class="profile-details">
                         <div class="profile-name">${processedData.obligor_name || ''}</div>
                         <div class="profile-role">Primary Borrower/Obligor</div>
-                        ${data.borrower_image_url ? `<div style="margin-bottom: 15px;"><a href="${convertGoogleDriveUrl(data.borrower_image_url)}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
+                        ${data.borrower_image_url ? `<div style="margin-bottom: 15px;"><a href="${(processedData as any).borrower_image_link}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>
@@ -540,24 +587,24 @@ export async function POST(request: NextRequest) {
                 <h3 style="font-size: 18px; font-weight: 600; color: #2d3748; margin-top: 30px; margin-bottom: 15px;">Verification Documents</h3>
                 <div class="images-grid">
                     <div class="image-card">
-                        <img src="${processedData.utility_bill_url || ''}" alt="Utility Bill">
+                        <img src="${(processedData as any).utility_bill_src || ''}" alt="Utility Bill">
                         <div class="image-label">
                             Utility Bill
-                            ${data.utility_bill_url ? `<br><a href="${convertGoogleDriveUrl(data.utility_bill_url)}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
+                            ${data.utility_bill_url ? `<br><a href="${(processedData as any).utility_bill_link}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
                         </div>
                     </div>
                     <div class="image-card">
-                        <img src="${processedData.owner_with_lo_url || ''}" alt="Owner with LO">
+                        <img src="${(processedData as any).owner_with_lo_src || ''}" alt="Owner with LO">
                         <div class="image-label">
                             Business Owner with Loan Officer
-                            ${data.owner_with_lo_url ? `<br><a href="${convertGoogleDriveUrl(data.owner_with_lo_url)}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
+                            ${data.owner_with_lo_url ? `<br><a href="${(processedData as any).owner_with_lo_link}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
                         </div>
                     </div>
                     <div class="image-card">
-                        <img src="${processedData.shop_frontage_url || ''}" alt="Shop Frontage">
+                        <img src="${(processedData as any).shop_frontage_src || ''}" alt="Shop Frontage">
                         <div class="image-label">
                             Shop Frontage
-                            ${data.shop_frontage_url ? `<br><a href="${convertGoogleDriveUrl(data.shop_frontage_url)}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
+                            ${data.shop_frontage_url ? `<br><a href="${(processedData as any).shop_frontage_link}" target="_blank" style="color: #667eea; font-size: 12px;">View Original →</a>` : ''}
                         </div>
                     </div>
                 </div>
@@ -569,12 +616,12 @@ export async function POST(request: NextRequest) {
                 
                 <div class="profile-card">
                     <div class="profile-image-link">
-                        <img src="${processedData.guarantor_image_url || ''}" alt="Guarantor" class="profile-image">
+                        <img src="${(processedData as any).guarantor_image_src || ''}" alt="Guarantor" class="profile-image">
                     </div>
                     <div class="profile-details">
                         <div class="profile-name">${processedData.guarantor_name || ''}</div>
                         <div class="profile-role">Guarantor</div>
-                        ${data.guarantor_image_url ? `<div style="margin-bottom: 15px;"><a href="${convertGoogleDriveUrl(data.guarantor_image_url)}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
+                        ${data.guarantor_image_url ? `<div style="margin-bottom: 15px;"><a href="${(processedData as any).guarantor_image_link}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
                         <div class="info-grid">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>

@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.libertytech.seedslite",
+      "sha256_cert_fingerprints": [
+        "40:19:CA:42:A8:18:CF:0C:2B:6F:39:97:FC:4C:0C:04:C7:F1:15:85:FD:E9:34:2D:23:B7:91:96:F6:BD:CF:D4",
+        "D8:6D:4E:07:14:4C:78:C1:C3:C9:C1:EA:81:BD:E8:63:D7:46:DE:FB:7B:DE:2E:8E:11:77:25:E3:9B:8D:6E:09"
+      ]
+    }
+  }
+]

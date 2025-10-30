@@ -477,9 +477,10 @@ export async function POST(request: NextRequest) {
                 gap: 15px;
             }
             .header-meta {
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
+                display: flex;
                 gap: 15px;
+                align-items: center;
+                justify-content: center;
             }
         }
     </style>

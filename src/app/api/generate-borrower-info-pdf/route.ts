@@ -218,6 +218,15 @@ export async function POST(request: NextRequest) {
             flex-wrap: wrap;
         }
 
+        /* Force header meta to 3 equal columns */
+        .header .header-meta {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+            align-items: start;
+            justify-items: center;
+        }
+
         .header .meta-item {
             display: flex;
             flex-direction: column;
@@ -320,6 +329,11 @@ export async function POST(request: NextRequest) {
             grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
             gap: 20px;
             margin-bottom: 20px;
+        }
+
+        /* Modifier: exactly two columns for tighter side-by-side layout */
+        .info-grid.two-columns {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .info-item {
@@ -476,6 +490,12 @@ export async function POST(request: NextRequest) {
                 flex-direction: column;
                 gap: 15px;
             }
+            .header .header-meta {
+                grid-template-columns: 1fr;
+            }
+            .info-grid.two-columns {
+                grid-template-columns: 1fr;
+            }
             .header-meta {
                 display: flex;
                 gap: 15px;
@@ -538,7 +558,7 @@ export async function POST(request: NextRequest) {
                         <div class="profile-name">${processedData.obligor_name || ''}</div>
                         <div class="profile-role">Primary Borrower/Obligor</div>
                         ${data.borrower_image_url ? `<div style="margin-bottom: 15px;"><a href="${(processedData as any).borrower_image_link}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
-                        <div class="info-grid">
+                        <div class="info-grid two-columns">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>
                                 <div class="info-value">${processedData.obligor_phone_number || ''}</div>
@@ -628,7 +648,7 @@ export async function POST(request: NextRequest) {
                         <div class="profile-name">${processedData.guarantor_name || ''}</div>
                         <div class="profile-role">Guarantor</div>
                         ${data.guarantor_image_url ? `<div style="margin-bottom: 15px;"><a href="${(processedData as any).guarantor_image_link}" target="_blank" style="color: #667eea; text-decoration: none; font-size: 14px;">📸 View Original Photo →</a></div>` : ''}
-                        <div class="info-grid">
+                        <div class="info-grid two-columns">
                             <div class="info-item">
                                 <div class="info-label">Phone Number</div>
                                 <div class="info-value">${processedData.guarantor_phone_number || ''}</div>

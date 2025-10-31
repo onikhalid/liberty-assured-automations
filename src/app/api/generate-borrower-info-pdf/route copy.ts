@@ -328,34 +328,15 @@ export async function POST(request: NextRequest) {
             border-bottom: 2px solid rgba(76,136,234,0.4);
             display: flex;
             align-items: center;
-            justify-content: space-between;
             gap: 10px;
         }
 
-        .section-title-text {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title-text::before {
+        .section-title::before {
             content: '';
             width: 8px;
             height: 8px;
             background: rgb(76,136,234);
             border-radius: 50%;
-        }
-
-        .section-logo {
-            height: 32px;
-            width: auto;
-            opacity: 0.8;
-        }
-        
-        .cover-logo {
-            height: 120px;
-            width: auto;
-            max-width: 100%;
         }
 
         .profile-card {
@@ -640,7 +621,7 @@ export async function POST(request: NextRequest) {
         <!-- Page 1: Cover -->
         <div class="content page cover">
             <div style="text-align:center; padding: 24px 8px;">
-                ${companyLogoSvg ? `<div style="display:flex; justify-content:center; margin-bottom:32px;"><div class="cover-logo">${companyLogoSvg}</div></div>` : ''}
+                ${companyLogoSvg ? `<div style="display:flex; justify-content:center; margin-bottom:20px;">${companyLogoSvg}</div>` : ''}
                 <div style="font-size:38px; font-weight:800; color:#f2f5f9; margin-bottom:8px;">KYC Submission</div>
                 <div style="font-size:24px; font-weight:700; color:#c9d3e6; margin-bottom:20px;">${processedData.obligor_name || ''}</div>
                 <div style="display:flex; gap:12px; justify-content:center;">

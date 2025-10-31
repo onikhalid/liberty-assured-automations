@@ -182,8 +182,9 @@ export async function POST(request: NextRequest) {
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: rgb(0, 6, 25);
+            color: #e5e7eb;
             min-height: 100vh;
             padding: 40px 20px;
         }
@@ -191,22 +192,26 @@ export async function POST(request: NextRequest) {
         .container {
             max-width: 900px;
             margin: 0 auto;
-            background: white;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
+            backdrop-filter: blur(8px);
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: rgba(255, 255, 255, 0.03);
+            color: #f9fafb;
             padding: 40px;
             text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
         }
 
         .header h1 {
             font-size: 32px;
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: 0.2px;
             margin-bottom: 10px;
         }
 
@@ -244,6 +249,7 @@ export async function POST(request: NextRequest) {
             font-size: 18px;
             font-weight: 600;
             margin-top: 5px;
+            color: #cbd5e1;
         }
 
         .content {
@@ -255,12 +261,12 @@ export async function POST(request: NextRequest) {
         }
 
         .section-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
-            color: #667eea;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #667eea;
+            color: rgb(76, 136, 234);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(76,136,234,0.4);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -270,7 +276,7 @@ export async function POST(request: NextRequest) {
             content: '';
             width: 8px;
             height: 8px;
-            background: #667eea;
+            background: rgb(76,136,234);
             border-radius: 50%;
         }
 
@@ -278,10 +284,14 @@ export async function POST(request: NextRequest) {
             display: flex;
             align-items: flex-start;
             gap: 30px;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 24px;
+            border-radius: 14px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(8px);
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .profile-image-link {
@@ -294,10 +304,10 @@ export async function POST(request: NextRequest) {
         .profile-image {
             width: 100%;
             height: 100%;
-            border-radius: 15px;
+            border-radius: 12px;
             object-fit: cover;
-            border: 4px solid white;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            border: 2px solid rgba(255,255,255,0.15);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
             cursor: pointer;
             transition: transform 0.2s;
         }
@@ -311,17 +321,17 @@ export async function POST(request: NextRequest) {
         }
 
         .profile-name {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 700;
-            color: #2d3748;
+            color: #f8fafc;
             margin-bottom: 5px;
         }
 
         .profile-role {
-            font-size: 16px;
-            color: #667eea;
+            font-size: 14px;
+            color: #9aa7be;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .info-grid {
@@ -337,15 +347,20 @@ export async function POST(request: NextRequest) {
         }
 
         .info-item {
-            background: #f7fafc;
-            padding: 15px 20px;
+            background: rgba(255,255,255,0.05);
+            padding: 14px 16px;
             border-radius: 10px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid rgba(76,136,234,0.6);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            border-right: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .info-label {
             font-size: 12px;
-            color: #718096;
+            color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 5px;
@@ -354,7 +369,7 @@ export async function POST(request: NextRequest) {
 
         .info-value {
             font-size: 16px;
-            color: #2d3748;
+            color: #e5e7eb;
             font-weight: 500;
         }
 
@@ -373,13 +388,18 @@ export async function POST(request: NextRequest) {
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-top: 20px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .image-card {
-            background: #f7fafc;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .image-card a {
@@ -389,7 +409,7 @@ export async function POST(request: NextRequest) {
 
         .image-card img {
             width: 100%;
-            height: 300px;
+            height: 240px;
             object-fit: cover;
             cursor: pointer;
             transition: transform 0.2s;
@@ -401,22 +421,25 @@ export async function POST(request: NextRequest) {
 
         .image-label {
             padding: 12px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
-            color: #2d3748;
+            color: #cbd5e1;
             text-align: center;
-            background: white;
+            background: rgba(0,0,0,0.2);
         }
 
         .loan-summary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
+            background: rgba(255,255,255,0.05);
+            color: #f1f5f9;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            gap: 16px;
+            margin-bottom: 24px;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .loan-stat {
@@ -424,26 +447,30 @@ export async function POST(request: NextRequest) {
         }
 
         .loan-stat-label {
-            font-size: 12px;
+            font-size: 11px;
             opacity: 0.9;
             text-transform: uppercase;
             letter-spacing: 1px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            color: #94a3b8;
         }
 
         .loan-stat-value {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
+            color: #e5e7eb;
         }
 
         .video-thumbnail {
             position: relative;
             width: 100%;
-            height: 400px;
+            height: 260px;
             background: #000;
             border-radius: 10px;
             overflow: hidden;
             cursor: pointer;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .video-thumbnail img {
@@ -470,6 +497,18 @@ export async function POST(request: NextRequest) {
             transition: all 0.2s;
         }
 
+        .badge {
+            display: inline-block;
+            background: rgb(8, 25, 52);
+            color: rgb(76, 136, 234);
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            border: 1px solid rgba(76,136,234,0.35);
+        }
+
         @media (max-width: 768px) {
             .profile-card {
                 flex-direction: column;
@@ -478,6 +517,13 @@ export async function POST(request: NextRequest) {
             }
 
             .profile-image-link {
+        /* Print-safe rules to avoid element breaking across pages */
+        @media print {
+            .section, .profile-card, .image-card, .loan-summary, .info-grid, .info-item { break-inside: avoid; page-break-inside: avoid; }
+        }
+
+        @page { size: A4; margin: 1.2cm 1.2cm 2.2cm 1.2cm; }
+
                 width: 200px;
                 height: 200px;
             }
@@ -542,7 +588,7 @@ export async function POST(request: NextRequest) {
                 </div>
                 <div class="loan-stat">
                     <div class="loan-stat-label">KYC Status</div>
-                    <div class="loan-stat-value">${processedData.kyc_status || ''}</div>
+                    <div class="loan-stat-value"><span class="badge">${processedData.kyc_status || ''}</span></div>
                 </div>
             </div>
 
@@ -707,14 +753,33 @@ export async function POST(request: NextRequest) {
     console.log("Setting HTML content...");
     await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
     
-    console.log("Content loaded, generating PDF immediately...");
-    // Don't wait for images or external resources - generate PDF immediately
-    const pdf = await page.pdf({
-      format: "a4",
-      printBackground: true,
-      margin: { top: "0.8cm", right: "0.8cm", bottom: "0.8cm", left: "0.8cm" },
-      preferCSSPageSize: true,
-    });
+        console.log("Content loaded, generating PDF with footer...");
+
+        const footerTemplate = `
+            <div style="
+                width: 100%;
+                font-size:10px;
+                color:#cbd5e1;
+                padding:6px 12px;
+                border-top:1px solid rgba(255,255,255,0.15);
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;
+            ">
+                <div style="color:#94a3b8;">Seeds by Liberty Assured</div>
+                <div style="color:#94a3b8;">Page <span class="pageNumber"></span> of <span class="totalPages"></span></div>
+            </div>`;
+
+        const pdf = await page.pdf({
+            format: "a4",
+            printBackground: true,
+            displayHeaderFooter: true,
+            headerTemplate: '<span></span>',
+            footerTemplate,
+            margin: { top: "1.2cm", right: "1.2cm", bottom: "2.2cm", left: "1.2cm" },
+            preferCSSPageSize: true,
+        });
 
     console.log("PDF generated successfully, closing browser...");
     await browser.close();

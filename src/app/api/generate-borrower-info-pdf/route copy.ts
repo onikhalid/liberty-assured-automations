@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { type NextRequest, NextResponse } from "next/server";
 
-interface BorrowerKYCData {
+export interface BorrowerKYCData {
   region: string;
   branch: string;
   loan_type: string;
@@ -36,7 +36,6 @@ interface BorrowerKYCData {
   authority_to_seize_url: string;
   shop_video_url: string;
 }
-
 const getPuppeteer = async () => {
   if (process.env.NODE_ENV === "development") {
     const puppeteer = await import("puppeteer");
@@ -62,159 +61,202 @@ const getPuppeteer = async () => {
 
 // Helper function to convert Google Drive URLs to direct download URLs
 const convertGoogleDriveUrl = (url: string): string => {
-  if (!url || !url.includes('drive.google.com')) {
+  if (!url || !url.includes("drive.google.com")) {
     return url;
   }
-  
+
   // Extract file ID from Google Drive URL
   const match = url.match(/\/d\/([a-zA-Z0-9-_]+)|[?&]id=([a-zA-Z0-9-_]+)/);
-  const fileId = match ? (match[1] || match[2]) : null;
-  
+  const fileId = match ? match[1] || match[2] : null;
+
   if (fileId) {
     return `https://drive.google.com/uc?export=view&id=${fileId}`;
   }
-  
+
   return url;
 };
 
 // Helper function to create placeholder image data URL
-const createPlaceholderImage = (text: string, color = '#667eea'): string => {
-  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect fill='${encodeURIComponent(color)}' width='300' height='300'/%3E%3Ctext fill='white' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(text)}%3C/text%3E%3C/svg%3E`;
+const createPlaceholderImage = (text: string, color = "#667eea"): string => {
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect fill='${encodeURIComponent(
+    color
+  )}' width='300' height='300'/%3E%3Ctext fill='white' font-family='Arial' font-size='16' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(
+    text
+  )}%3C/text%3E%3C/svg%3E`;
 };
 
 // Helper to fetch an image and return a data URL (base64). Falls back to null on error/timeouts.
-const fetchImageAsDataUrl = async (url: string, label: string): Promise<string | null> => {
-    try {
-        if (!url) return null;
-        const resolvedUrl = convertGoogleDriveUrl(url);
+const fetchImageAsDataUrl = async (
+  url: string,
+  label: string
+): Promise<string | null> => {
+  try {
+    if (!url) return null;
+    const resolvedUrl = convertGoogleDriveUrl(url);
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout per image
-        const res = await fetch(resolvedUrl, { redirect: 'follow', signal: controller.signal, cache: 'no-store' });
-        clearTimeout(timeout);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout per image
+    const res = await fetch(resolvedUrl, {
+      redirect: "follow",
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    clearTimeout(timeout);
 
-        if (!res.ok) {
-            console.warn(`Image fetch failed (${label}):`, res.status, res.statusText);
-            return null;
-        }
-        const contentType = res.headers.get('content-type') || '';
-        if (!contentType.startsWith('image/')) {
-            console.warn(`Not an image (${label}):`, contentType);
-            return null;
-        }
-        const buffer = await res.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString('base64');
-        return `data:${contentType};base64,${base64}`;
-    } catch (e) {
-        console.warn(`Error fetching image (${label}):`, (e as Error).message);
-        return null;
+    if (!res.ok) {
+      console.warn(
+        `Image fetch failed (${label}):`,
+        res.status,
+        res.statusText
+      );
+      return null;
     }
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.startsWith("image/")) {
+      console.warn(`Not an image (${label}):`, contentType);
+      return null;
+    }
+    const buffer = await res.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    return `data:${contentType};base64,${base64}`;
+  } catch (e) {
+    console.warn(`Error fetching image (${label}):`, (e as Error).message);
+    return null;
+  }
 };
 
 // Helper to fetch Google Fonts CSS for Manrope and inline font files as data URLs
 const fetchAndInlineManropeCss = async (): Promise<string> => {
-    const cssUrl = 'https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap';
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
-        const res = await fetch(cssUrl, { signal: controller.signal, redirect: 'follow', cache: 'no-store' });
-        clearTimeout(timeout);
-        if (!res.ok) {
-            console.warn('Failed to fetch Manrope CSS:', res.status, res.statusText);
-            return '';
-        }
-        let css = await res.text();
-        // Find all url(...) occurrences and inline
-        const urlRegex = /url\(([^)]+)\)/g;
-        const urls = Array.from(css.matchAll(urlRegex)).map(m => m[1].replace(/"|'/g, ''));
-        const uniqueUrls = Array.from(new Set(urls));
-        const replacements: Record<string, string> = {};
-            await Promise.all(uniqueUrls.map(async (u) => {
-            try {
-                const c2 = new AbortController();
-                const t2 = setTimeout(() => c2.abort(), 8000);
-                const r2 = await fetch(u, { signal: c2.signal, redirect: 'follow', cache: 'no-store' });
-                clearTimeout(t2);
-                if (!r2.ok) return;
-                const ct = r2.headers.get('content-type') || 'font/woff2';
-                const buf = await r2.arrayBuffer();
-                const b64 = Buffer.from(buf).toString('base64');
-                replacements[u] = `url(data:${ct};base64,${b64})`;
-                } catch {
-                    // ignore font fetch errors per-url
-            }
-        }));
-        css = css.replace(urlRegex, (match, p1) => {
-            const key = String(p1).replace(/"|'/g, '');
-            return replacements[key] || match;
-        });
-        return css;
-    } catch (e) {
-        console.warn('Error inlining Manrope CSS:', (e as Error).message);
-        return '';
+  const cssUrl =
+    "https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(cssUrl, {
+      signal: controller.signal,
+      redirect: "follow",
+      cache: "no-store",
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.warn("Failed to fetch Manrope CSS:", res.status, res.statusText);
+      return "";
     }
+    let css = await res.text();
+    // Find all url(...) occurrences and inline
+    const urlRegex = /url\(([^)]+)\)/g;
+    const urls = Array.from(css.matchAll(urlRegex)).map((m) =>
+      m[1].replace(/"|'/g, "")
+    );
+    const uniqueUrls = Array.from(new Set(urls));
+    const replacements: Record<string, string> = {};
+    await Promise.all(
+      uniqueUrls.map(async (u) => {
+        try {
+          const c2 = new AbortController();
+          const t2 = setTimeout(() => c2.abort(), 8000);
+          const r2 = await fetch(u, {
+            signal: c2.signal,
+            redirect: "follow",
+            cache: "no-store",
+          });
+          clearTimeout(t2);
+          if (!r2.ok) return;
+          const ct = r2.headers.get("content-type") || "font/woff2";
+          const buf = await r2.arrayBuffer();
+          const b64 = Buffer.from(buf).toString("base64");
+          replacements[u] = `url(data:${ct};base64,${b64})`;
+        } catch {
+          // ignore font fetch errors per-url
+        }
+      })
+    );
+    css = css.replace(urlRegex, (match, p1) => {
+      const key = String(p1).replace(/"|'/g, "");
+      return replacements[key] || match;
+    });
+    return css;
+  } catch (e) {
+    console.warn("Error inlining Manrope CSS:", (e as Error).message);
+    return "";
+  }
 };
 
 export async function POST(request: NextRequest) {
   let browser;
-  
-    try {
+
+  try {
     console.log("Starting PDF generation...");
     const data: BorrowerKYCData = await request.json();
-        const companyLogoSvg: string | undefined = (data as any)?.company_logo_svg ? String((data as any).company_logo_svg) : undefined;
-    
-        // Attempt to inline images as data URLs; fall back to placeholders
-        const borrowerImageSrc = (await fetchImageAsDataUrl(data.borrower_image_url, 'Borrower Photo'))
-            ?? createPlaceholderImage('Borrower Photo', '#667eea');
-        const guarantorImageSrc = (await fetchImageAsDataUrl(data.guarantor_image_url, 'Guarantor Photo'))
-            ?? createPlaceholderImage('Guarantor Photo', '#764ba2');
-        const utilityBillSrc = (await fetchImageAsDataUrl(data.utility_bill_url, 'Utility Bill'))
-            ?? createPlaceholderImage('Utility Bill', '#4a5568');
-        const ownerWithLoSrc = (await fetchImageAsDataUrl(data.owner_with_lo_url, 'Owner with LO'))
-            ?? createPlaceholderImage('Owner with LO', '#4a5568');
-        const shopFrontageSrc = (await fetchImageAsDataUrl(data.shop_frontage_url, 'Shop Frontage'))
-            ?? createPlaceholderImage('Shop Frontage', '#4a5568');
 
-        const processedData = {
-            ...data,
-            // inline image sources
-            borrower_image_src: borrowerImageSrc,
-            guarantor_image_src: guarantorImageSrc,
-            utility_bill_src: utilityBillSrc,
-            owner_with_lo_src: ownerWithLoSrc,
-            shop_frontage_src: shopFrontageSrc,
-            // preserve original links (converted for Drive where possible)
-            borrower_image_link: convertGoogleDriveUrl(data.borrower_image_url),
-            guarantor_image_link: convertGoogleDriveUrl(data.guarantor_image_url),
-            utility_bill_link: convertGoogleDriveUrl(data.utility_bill_url),
-            owner_with_lo_link: convertGoogleDriveUrl(data.owner_with_lo_url),
-            shop_frontage_link: convertGoogleDriveUrl(data.shop_frontage_url),
-            authority_to_seize_url: convertGoogleDriveUrl(data.authority_to_seize_url),
-            shop_video_url: convertGoogleDriveUrl(data.shop_video_url),
-        } as any;
-    
+    // Attempt to inline images as data URLs; fall back to placeholders
+    const borrowerImageSrc =
+      (await fetchImageAsDataUrl(data.borrower_image_url, "Borrower Photo")) ??
+      createPlaceholderImage("Borrower Photo", "#667eea");
+    const guarantorImageSrc =
+      (await fetchImageAsDataUrl(
+        data.guarantor_image_url,
+        "Guarantor Photo"
+      )) ?? createPlaceholderImage("Guarantor Photo", "#764ba2");
+    const utilityBillSrc =
+      (await fetchImageAsDataUrl(data.utility_bill_url, "Utility Bill")) ??
+      createPlaceholderImage("Utility Bill", "#4a5568");
+    const ownerWithLoSrc =
+      (await fetchImageAsDataUrl(data.owner_with_lo_url, "Owner with LO")) ??
+      createPlaceholderImage("Owner with LO", "#4a5568");
+    const shopFrontageSrc =
+      (await fetchImageAsDataUrl(data.shop_frontage_url, "Shop Frontage")) ??
+      createPlaceholderImage("Shop Frontage", "#4a5568");
+
+    const processedData = {
+      ...data,
+      // inline image sources
+      borrower_image_src: borrowerImageSrc,
+      guarantor_image_src: guarantorImageSrc,
+      utility_bill_src: utilityBillSrc,
+      owner_with_lo_src: ownerWithLoSrc,
+      shop_frontage_src: shopFrontageSrc,
+      // preserve original links (converted for Drive where possible)
+      borrower_image_link: convertGoogleDriveUrl(data.borrower_image_url),
+      guarantor_image_link: convertGoogleDriveUrl(data.guarantor_image_url),
+      utility_bill_link: convertGoogleDriveUrl(data.utility_bill_url),
+      owner_with_lo_link: convertGoogleDriveUrl(data.owner_with_lo_url),
+      shop_frontage_link: convertGoogleDriveUrl(data.shop_frontage_url),
+      authority_to_seize_url: convertGoogleDriveUrl(
+        data.authority_to_seize_url
+      ),
+      shop_video_url: convertGoogleDriveUrl(data.shop_video_url),
+    } as BorrowerKYCData;
+
     console.log("URLs converted, launching browser...");
     const puppeteer = await getPuppeteer();
     browser = await puppeteer.launch({
       headless: true,
       args: [
-        "--no-sandbox", 
+        "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--disable-web-security",
-        "--disable-features=VizDisplayCompositor"
+        "--disable-features=VizDisplayCompositor",
       ],
     });
 
     console.log("Browser launched, creating page...");
     const page = await browser.newPage();
-    
+
     // Set shorter, more realistic timeouts
     page.setDefaultTimeout(30000);
     page.setDefaultNavigationTimeout(30000);
 
     const origin = new URL(request.url).origin;
-    const patternDataUrl = await fetchImageAsDataUrl(`${origin}/images/pattern.svg`, 'Pattern');
+    const patternDataUrl = await fetchImageAsDataUrl(
+      `${origin}/images/pattern.svg`,
+      "Pattern"
+    );
+    const companyLogoSvg = await fetchImageAsDataUrl(
+      `${origin}/images/seeds-logo.svg`,
+      "Company Logo"
+    );
     const manropeCss = await fetchAndInlineManropeCss();
 
     const htmlContent = `<!DOCTYPE html>
@@ -256,7 +298,7 @@ export async function POST(request: NextRequest) {
         .page-footer { bottom: 0; }
         .page-header .pattern, .page-footer .pattern {
             width: 100%; height: 100%;
-            background-image: url('${patternDataUrl ?? ''}');
+            background-image: url('${patternDataUrl ?? ""}');
             background-size: cover; background-position: center; opacity: 0.25;
         }
 
@@ -328,15 +370,36 @@ export async function POST(request: NextRequest) {
             border-bottom: 2px solid rgba(76,136,234,0.4);
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 10px;
         }
 
-        .section-title::before {
+        .section-title-text {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title-text::before {
             content: '';
             width: 8px;
             height: 8px;
             background: rgb(76,136,234);
             border-radius: 50%;
+        }
+
+        .section-logo {
+            height: 32px;
+            width: auto;
+            opacity: 0.8;
+            object-fit: contain;
+        }
+        
+        .cover-logo {
+            height: 50px;
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
         }
 
         .profile-card {
@@ -621,52 +684,101 @@ export async function POST(request: NextRequest) {
         <!-- Page 1: Cover -->
         <div class="content page cover">
             <div style="text-align:center; padding: 24px 8px;">
-                ${companyLogoSvg ? `<div style="display:flex; justify-content:center; margin-bottom:20px;">${companyLogoSvg}</div>` : ''}
+                <div style="display:flex; justify-content:center; margin-bottom:32px;"><img src="${companyLogoSvg}" alt="Company Logo" class="cover-logo"></div>
                 <div style="font-size:38px; font-weight:800; color:#f2f5f9; margin-bottom:8px;">KYC Submission</div>
-                <div style="font-size:24px; font-weight:700; color:#c9d3e6; margin-bottom:20px;">${processedData.obligor_name || ''}</div>
+                <div style="font-size:24px; font-weight:700; color:#c9d3e6; margin-bottom:20px;">${
+                  processedData.obligor_name || ""
+                }</div>
                 <div style="display:flex; gap:12px; justify-content:center;">
-                    <span class="badge">${processedData.loan_type || ''}</span>
-                    <span class="badge">${processedData.branch || ''}</span>
-                    <span class="badge">${processedData.region || ''}</span>
+                    <span class="badge">${processedData.loan_type || ""}</span>
+                    <span class="badge">${processedData.branch || ""}</span>
+                    <span class="badge">${processedData.region || ""}</span>
                 </div>
             </div>
             <div class="loan-summary" style="display:flex; gap:12px; align-items:center; justify-content:center;">
-                <div class="loan-stat"><div class="loan-stat-label">Loan Amount</div><div class="loan-stat-value">${processedData.loan_amount || ''}</div></div>
-                <div class="loan-stat"><div class="loan-stat-label">Tenor</div><div class="loan-stat-value">${processedData.tenor || ''}</div></div>
-                <div class="loan-stat"><div class="loan-stat-label">Daily Repayment</div><div class="loan-stat-value">${processedData.daily_repayment || ''}</div></div>
-                <div class="loan-stat"><div class="loan-stat-label">KYC Status</div><div class="loan-stat-value"><span class="badge">${processedData.kyc_status || ''}</span></div></div>
+                <div class="loan-stat"><div class="loan-stat-label">Loan Amount</div><div class="loan-stat-value">${
+                  processedData.loan_amount || ""
+                }</div></div>
+                <div class="loan-stat"><div class="loan-stat-label">Loan Tenor</div><div class="loan-stat-value">${
+                  processedData.tenor + "" + " months" || ""
+                }</div></div>
+                <div class="loan-stat"><div class="loan-stat-label">Daily Repayment</div><div class="loan-stat-value">${
+                  processedData.daily_repayment || ""
+                }</div></div>
+                <div class="loan-stat"><div class="loan-stat-label">KYC Validation</div><div class="loan-stat-value"><span class="badge">${
+                  processedData.kyc_status || ""
+                }</span></div></div>
             </div>
         </div>
 
         <!-- Page 2: Borrower -->
         <div class="content page">
             <div class="section">
-                <h2 class="section-title">Borrower Profile</h2>
+                <h2 class="section-title">
+                    <span class="section-title-text">Borrower Profile</span>
+                    ${
+                      companyLogoSvg
+                        ? `<img src="${companyLogoSvg}" alt="Company Logo" class="section-logo">`
+                        : ""
+                    }
+                </h2>
                 <div class="profile-card">
                     <div class="profile-image-link">
-                        <img src="${(processedData as any).borrower_image_src || ''}" alt="Borrower" class="profile-image">
+                        <img src="${
+                          (processedData as any).borrower_image_src || ""
+                        }" alt="Borrower" class="profile-image">
                     </div>
                     <div class="profile-details">
-                        <div class="profile-name">${processedData.obligor_name || ''}</div>
+                        <div class="profile-name">${
+                          processedData.obligor_name || ""
+                        }</div>
                         <div class="profile-role">Primary Borrower/Obligor</div>
-                        ${data.borrower_image_url ? `<div style="margin-bottom: 12px;"><a href="${(processedData as any).borrower_image_link}" target="_blank" style="color: #4c88ea; text-decoration: none; font-size: 13px;">📸 View Original Photo →</a></div>` : ''}
+                        ${
+                          data.borrower_image_url
+                            ? `<div style="margin-bottom: 12px;"><a href="${
+                                (processedData as any).borrower_image_link
+                              }" target="_blank" style="color: #4c88ea; text-decoration: none; font-size: 13px;">📸 View Original Photo →</a></div>`
+                            : ""
+                        }
                         <div class="info-grid two-columns">
-                            <div class="info-item"><div class="info-label">Phone Number</div><div class="info-value">${processedData.obligor_phone_number || ''}</div></div>
-                            <div class="info-item"><div class="info-label">BVN/NIN Details</div><div class="info-value">${processedData.bvn_nin_details || ''}</div></div>
-                            <div class="info-item"><div class="info-label">Business Type</div><div class="info-value">${processedData.business_type || ''}</div></div>
-                            <div class="info-item"><div class="info-label">In-Store Stock</div><div class="info-value">${processedData.in_store_stock || ''}</div></div>
-                            <div class="info-item"><div class="info-label">Business Ownership Validation</div><div class="info-value">${processedData.business_ownership_validation || ''}</div></div>
+                            <div class="info-item"><div class="info-label">Phone Number</div><div class="info-value">${
+                              processedData.obligor_phone_number || ""
+                            }</div></div>
+                            <div class="info-item"><div class="info-label">BVN/NIN Details</div><div class="info-value">${
+                              processedData.bvn_nin_details || ""
+                            }</div></div>
+                            <div class="info-item"><div class="info-label">Business Type</div><div class="info-value">${
+                              processedData.business_type || ""
+                            }</div></div>
+                            <div class="info-item"><div class="info-label">In-Store Stock</div><div class="info-value">${
+                              processedData.in_store_stock || ""
+                            }</div></div>
+                            <div class="info-item"><div class="info-label">Business Ownership Validation</div><div class="info-value">${
+                              processedData.business_ownership_validation || ""
+                            }</div></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="info-grid">
-                    <div class="info-item"><div class="info-label">Home Address</div><div class="info-value">${processedData.obligor_home_address || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Nearest Bus Stop (Home)</div><div class="info-value">${processedData.home_nearest_bus_stop || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Landmark (Home)</div><div class="info-value">${processedData.home_landmark || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Shop Address</div><div class="info-value">${processedData.shop_address || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Nearest Bus Stop (Shop)</div><div class="info-value">${processedData.shop_nearest_bus_stop || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Landmark (Shop)</div><div class="info-value">${processedData.shop_landmark || ''}</div></div>
+                    <div class="info-item"><div class="info-label">Home Address</div><div class="info-value">${
+                      processedData.obligor_home_address || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Nearest Bus Stop (Home)</div><div class="info-value">${
+                      processedData.home_nearest_bus_stop || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Landmark (Home)</div><div class="info-value">${
+                      processedData.home_landmark || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Shop Address</div><div class="info-value">${
+                      processedData.shop_address || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Nearest Bus Stop (Shop)</div><div class="info-value">${
+                      processedData.shop_nearest_bus_stop || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Landmark (Shop)</div><div class="info-value">${
+                      processedData.shop_landmark || ""
+                    }</div></div>
                 </div>
 
             </div>
@@ -675,11 +787,42 @@ export async function POST(request: NextRequest) {
         <!-- Page 3: Verification Documents -->
         <div class="content page">
             <div class="section">
-                <h2 class="section-title">Verification Documents</h2>
+                <h2 class="section-title">
+                    <span class="section-title-text">Verification Documents</span>
+                    ${
+                      companyLogoSvg
+                        ? `<img src="${companyLogoSvg}" alt="Company Logo" class="section-logo">`
+                        : ""
+                    }
+                </h2>
                 <div class="images-grid">
-                    <div class="image-card"><img src="${(processedData as any).utility_bill_src || ''}" alt="Utility Bill"><div class="image-label">Utility Bill ${data.utility_bill_url ? `<br><a href="${(processedData as any).utility_bill_link}" target="_blank" style="color: #4c88ea; font-size: 12px;">View Original →</a>` : ''}</div></div>
-                    <div class="image-card"><img src="${(processedData as any).owner_with_lo_src || ''}" alt="Owner with LO"><div class="image-label">Business Owner with Loan Officer ${data.owner_with_lo_url ? `<br><a href="${(processedData as any).owner_with_lo_link}" target="_blank" style="color: #4c88ea; font-size: 12px;">View Original →</a>` : ''}</div></div>
-                    <div class="image-card"><img src="${(processedData as any).shop_frontage_src || ''}" alt="Shop Frontage"><div class="image-label">Shop Frontage ${data.shop_frontage_url ? `<br><a href="${(processedData as any).shop_frontage_link}" target="_blank" style="color: #4c88ea; font-size: 12px;">View Original →</a>` : ''}</div></div>
+                    <div class="image-card"><img src="${
+                      (processedData as any).utility_bill_src || ""
+                    }" alt="Utility Bill"><div class="image-label">Utility Bill ${
+      data.utility_bill_url
+        ? `<br><a href="${
+            (processedData as any).utility_bill_link
+          }" target="_blank" style="color: #4c88ea; font-size: 12px;">View Original →</a>`
+        : ""
+    }</div></div>
+                    <div class="image-card"><img src="${
+                      (processedData as any).owner_with_lo_src || ""
+                    }" alt="Owner with LO"><div class="image-label">Business Owner with Loan Officer ${
+      data.owner_with_lo_url
+        ? `<br><a href="${
+            (processedData as any).owner_with_lo_link
+          }" target="_blank" style="color: #4c88ea; font-size: 12px;">View Original →</a>`
+        : ""
+    }</div></div>
+                    <div class="image-card"><img src="${
+                      (processedData as any).shop_frontage_src || ""
+                    }" alt="Shop Frontage"><div class="image-label">Shop Frontage ${
+      data.shop_frontage_url
+        ? `<br><a href="${
+            (processedData as any).shop_frontage_link
+          }" target="_blank" style="color: #4c88ea; font-size: 12px;">View Original →</a>`
+        : ""
+    }</div></div>
                 </div>
             </div>
         </div>
@@ -687,25 +830,54 @@ export async function POST(request: NextRequest) {
         <!-- Page 4: Guarantor -->
         <div class="content page">
             <div class="section">
-                <h2 class="section-title">Guarantor Profile</h2>
+                <h2 class="section-title">
+                    <span class="section-title-text">Guarantor Profile</span>
+                    ${
+                      companyLogoSvg
+                        ? `<img src="${companyLogoSvg}" alt="Company Logo" class="section-logo">`
+                        : ""
+                    }
+                </h2>
                 <div class="profile-card">
-                    <div class="profile-image-link"><img src="${(processedData as any).guarantor_image_src || ''}" alt="Guarantor" class="profile-image"></div>
+                    <div class="profile-image-link"><img src="${
+                      (processedData as any).guarantor_image_src || ""
+                    }" alt="Guarantor" class="profile-image"></div>
                     <div class="profile-details">
-                        <div class="profile-name">${processedData.guarantor_name || ''}</div>
+                        <div class="profile-name">${
+                          processedData.guarantor_name || ""
+                        }</div>
                         <div class="profile-role">Guarantor</div>
-                        ${data.guarantor_image_url ? `<div style="margin-bottom: 12px;"><a href="${(processedData as any).guarantor_image_link}" target="_blank" style="color: #4c88ea; text-decoration: none; font-size: 13px;">📸 View Original Photo →</a></div>` : ''}
+                        ${
+                          data.guarantor_image_url
+                            ? `<div style="margin-bottom: 12px;"><a href="${
+                                (processedData as any).guarantor_image_link
+                              }" target="_blank" style="color: #4c88ea; text-decoration: none; font-size: 13px;">📸 View Original Photo →</a></div>`
+                            : ""
+                        }
                         <div class="info-grid two-columns">
-                            <div class="info-item"><div class="info-label">Phone Number</div><div class="info-value">${processedData.guarantor_phone_number || ''}</div></div>
-                            <div class="info-item"><div class="info-label">Occupation</div><div class="info-value">${processedData.guarantor_occupation || ''}</div></div>
+                            <div class="info-item"><div class="info-label">Phone Number</div><div class="info-value">${
+                              processedData.guarantor_phone_number || ""
+                            }</div></div>
+                            <div class="info-item"><div class="info-label">Occupation</div><div class="info-value">${
+                              processedData.guarantor_occupation || ""
+                            }</div></div>
                         </div>
                     </div>
                 </div>
 
                 <div class="info-grid">
-                    <div class="info-item"><div class="info-label">Home Address</div><div class="info-value">${processedData.guarantor_home_address || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Nearest Bus Stop</div><div class="info-value">${processedData.guarantor_nearest_bus_stop || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Landmark</div><div class="info-value">${processedData.guarantor_landmark || ''}</div></div>
-                    <div class="info-item"><div class="info-label">Work Address</div><div class="info-value">${processedData.guarantor_work_address || ''}</div></div>
+                    <div class="info-item"><div class="info-label">Home Address</div><div class="info-value">${
+                      processedData.guarantor_home_address || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Nearest Bus Stop</div><div class="info-value">${
+                      processedData.guarantor_nearest_bus_stop || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Landmark</div><div class="info-value">${
+                      processedData.guarantor_landmark || ""
+                    }</div></div>
+                    <div class="info-item"><div class="info-label">Work Address</div><div class="info-value">${
+                      processedData.guarantor_work_address || ""
+                    }</div></div>
                 </div>
             </div>
         </div>
@@ -713,14 +885,32 @@ export async function POST(request: NextRequest) {
     <!-- Page 5: Legal & Video -->
     <div class="content page">
             <div class="section">
-                <h2 class="section-title">Legal Documents</h2>
+                <h2 class="section-title">
+                    <span class="section-title-text">Legal Documents</span>
+                    ${
+                      companyLogoSvg
+                        ? `<img src="${companyLogoSvg}" alt="Company Logo" class="section-logo">`
+                        : ""
+                    }
+                </h2>
                 <div class="info-grid two-columns">
-                    <div class="info-item"><div class="info-label">Authority to Seize</div><div class="info-value"><a href="${processedData.authority_to_seize_url || '#'}" target="_blank">View Document →</a></div></div>
+                    <div class="info-item"><div class="info-label">Authority to Seize</div><div class="info-value"><a href="${
+                      processedData.authority_to_seize_url || "#"
+                    }" target="_blank">View Document →</a></div></div>
                 </div>
             </div>
             <div class="section">
-                <h2 class="section-title">Shop Verification Video</h2>
-                <a href="${processedData.shop_video_url || '#'}" target="_blank" class="video-thumbnail">
+                <h2 class="section-title">
+                    <span class="section-title-text">Shop Verification Video</span>
+                    ${
+                      companyLogoSvg
+                        ? `<img src="${companyLogoSvg}" alt="Company Logo" class="section-logo">`
+                        : ""
+                    }
+                </h2>
+                <a href="${
+                  processedData.shop_video_url || "#"
+                }" target="_blank" class="video-thumbnail">
                     <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='260'%3E%3Crect fill='%23000' width='800' height='260'/%3E%3Ctext fill='%23cbd5e1' font-family='Arial' font-size='20' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EObligor Shop Video%3C/text%3E%3C/svg%3E" alt="Video Thumbnail">
                 </a>
             </div>
@@ -730,17 +920,17 @@ export async function POST(request: NextRequest) {
 </html>`;
 
     console.log("Setting HTML content...");
-    await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
-    
-        console.log("Content loaded, generating PDF...");
+    await page.setContent(htmlContent, { waitUntil: "domcontentloaded" });
 
-        const pdf = await page.pdf({
-            format: "a4",
-            printBackground: true,
-            displayHeaderFooter: false,
-            margin: { top: 0, right: 0, bottom: 0, left: 0 },
-            preferCSSPageSize: true,
-        });
+    console.log("Content loaded, generating PDF...");
+
+    const pdf = await page.pdf({
+      format: "a4",
+      printBackground: true,
+      displayHeaderFooter: false,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      preferCSSPageSize: true,
+    });
 
     console.log("PDF generated successfully, closing browser...");
     await browser.close();
@@ -750,12 +940,16 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=${processedData.obligor_name ? processedData.obligor_name.replace(/[^a-zA-Z0-9]/g, '_') : 'borrower'}-info.pdf`,
+        "Content-Disposition": `attachment; filename=${
+          processedData.obligor_name
+            ? processedData.obligor_name.replace(/[^a-zA-Z0-9]/g, "_")
+            : "borrower"
+        }-info.pdf`,
       },
     });
   } catch (error: any) {
     console.error("Error generating PDF:", error);
-    
+
     // Ensure browser is closed even if there's an error
     if (browser) {
       try {
@@ -764,7 +958,7 @@ export async function POST(request: NextRequest) {
         console.error("Error closing browser:", closeError);
       }
     }
-    
+
     return NextResponse.json(
       { error: "PDF generation failed", details: error.message },
       { status: 500 }

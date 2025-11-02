@@ -1,33 +1,33 @@
 'use client';
 
 import { useState } from 'react';
+import { BorrowerKYCData } from './api/generate-borrower-info-pdf/route';
 
 export default function Home() {
   const [isGeneratingLocal, setIsGeneratingLocal] = useState(false);
   const [isGeneratingDeployed, setIsGeneratingDeployed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sampleData = {
+  const sampleData: BorrowerKYCData = {
     region: "Sample Region",
     branch: "Sample Branch",
     loan_type: "Business Loan",
     obligor_name: "John Doe",
     in_store_stock: "1000",
     obligor_phone_number: "08012345678",
-    kyc_validation: "Valid",
+    kyc_status: "YES",
     utility_bill_url: "",
     business_ownership_validation: "Verified",
-    business_owner_pic_url: "",
-    frontage_pic_url: "",
+    shop_frontage_url: "",
     obligor_home_address: "123 Main St",
-    nearest_bus_stop_home: "Stop A",
-    landmark_home: "Landmark A",
-    obligor_business: "Retail",
-    obligor_shop_address: "Shop Address",
-    nearest_bus_stop_shop: "Stop B",
-    landmark_shop: "Landmark B",
+    home_nearest_bus_stop: "Stop A",
+    home_landmark: "Landmark A",
+    business_type: "Retail",
+    shop_address: "Shop Address",
+    shop_nearest_bus_stop: "Stop B",
+    shop_landmark: "Landmark B",
     bvn_nin_details: "1234567890",
-    loan_amount: "50000",
+    loan_amount: "350000",
     tenor: "12",
     daily_repayment: "1388",
     guarantor_name: "Jane Doe",
@@ -40,6 +40,7 @@ export default function Home() {
     borrower_image_url: "",
     guarantor_image_url: "",
     authority_to_seize_url: "",
+    owner_with_lo_url: "",
     shop_video_url: "",
   };
 
@@ -136,7 +137,7 @@ export default function Home() {
         
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">Sample Data</h2>
-          <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto max-h-96">
+          <pre className="bg-[rgb(0,6,25)] p-4 rounded text-sm overflow-auto max-h-96">
             {JSON.stringify(sampleData, null, 2)}
           </pre>
         </div>

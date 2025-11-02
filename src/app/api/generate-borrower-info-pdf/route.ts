@@ -700,7 +700,7 @@ export async function POST(request: NextRequest) {
                   processedData.loan_amount || ""
                 }</div></div>
                 <div class="loan-stat"><div class="loan-stat-label">Loan Tenor</div><div class="loan-stat-value">${
-                  processedData.tenor + "" + " months" || ""
+                  processedData.tenor || ""
                 }</div></div>
                 <div class="loan-stat"><div class="loan-stat-label">Daily Repayment</div><div class="loan-stat-value">${
                   processedData.daily_repayment || ""

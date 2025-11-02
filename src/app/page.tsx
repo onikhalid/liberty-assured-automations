@@ -28,7 +28,7 @@ export default function Home() {
     shop_landmark: "Landmark B",
     bvn_nin_details: "1234567890",
     loan_amount: "350000",
-    tenor: "12",
+    tenor: "12 months",
     daily_repayment: "1388",
     guarantor_name: "Jane Doe",
     guarantor_home_address: "456 Home Rd",

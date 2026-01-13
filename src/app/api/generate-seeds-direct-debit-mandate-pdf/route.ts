@@ -367,110 +367,100 @@ const generateHtmlTemplate = (
           </div>
 
           </div>
-        </div>
-
-        <!-- Mandate Details Section -->
-        <div class="section">
-          <h3 class="section-title">Mandate Details</h3>
-
-          <div class="form-group full">
-            <div class="field">
-              <label>Description of Payment</label>
-              <textarea readonly>${data.payment_description}</textarea>
+          <!-- Mandate Details Section -->
+          <div class="section">
+            <h3 class="section-title">Mandate Details</h3>
+  
+            <div class="form-group full">
+              <div class="field">
+                <label>Description of Payment</label>
+                <textarea readonly>${data.payment_description}</textarea>
+              </div>
+            </div>
+  
+            <div class="form-group">
+              <div class="field">
+                <label>Amount</label>
+                <input type="text" value="${data.amount}" readonly />
+              </div>
+              <div class="field">
+                <label>Recursivity</label>
+                <input type="text" value="${data.recursivity}" readonly />
+              </div>
+  
+              <div class="field">
+                <label>Scheduled Reduction</label>
+                <input type="text" value="${data.scheduled_reduction}" readonly />
+              </div>
+              <div class="field">
+                <label>Start Date</label>
+                <input type="text" value="${data.start_date}" readonly />
+              </div>
+  
+              <div class="field">
+                <label>End Date</label>
+                <input type="text" value="${data.end_date}" readonly />
+              </div>
+              <div class="field">
+                <label>Check Balance</label>
+                <input type="text" value="${data.check_balance}" readonly />
+              </div>
             </div>
           </div>
-
-          <div class="form-group">
-            <div class="field">
-              <label>Amount</label>
-              <input type="text" value="${data.amount}" readonly />
-            </div>
-            <div class="field">
-              <label>Recursivity</label>
-              <input type="text" value="${data.recursivity}" readonly />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <div class="field">
-              <label>Scheduled Reduction</label>
-              <input type="text" value="${data.scheduled_reduction}" readonly />
-            </div>
-            <div class="field">
-              <label>Start Date</label>
-              <input type="text" value="${data.start_date}" readonly />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <div class="field">
-              <label>End Date</label>
-              <input type="text" value="${data.end_date}" readonly />
-            </div>
-            <div class="field">
-              <label>Check Balance</label>
-              <input type="text" value="${data.check_balance}" readonly />
+  
+          <!-- Payer Information Section -->
+          <div class="section">
+            <h3 class="section-title">Payer Information</h3>
+  
+            <div class="form-group">
+              <div class="field">
+                <label>Payer Name</label>
+                <input type="text" value="${data.payer_name}" readonly />
+              </div>
+              <div class="field">
+                <label>Phone Number</label>
+                <input type="text" value="${data.payer_phone}" readonly />
+              </div>
+  
+              <div class="field">
+                <label>Bank</label>
+                <input type="text" value="${data.payer_bank}" readonly />
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <input type="email" value="${data.payer_email}" readonly />
+              </div>
+  
+              <div class="field">
+                <label>Account Number</label>
+                <input type="text" value="${data.payer_account_number}" readonly />
+              </div>
             </div>
           </div>
-        </div>
-
-        <!-- Payer Information Section -->
-        <div class="section">
-          <h3 class="section-title">Payer Information</h3>
-
-          <div class="form-group">
-            <div class="field">
-              <label>Payer Name</label>
-              <input type="text" value="${data.payer_name}" readonly />
-            </div>
-            <div class="field">
-              <label>Phone Number</label>
-              <input type="text" value="${data.payer_phone}" readonly />
-            </div>
+  
+          <!-- Consent Statement -->
+          <div class="consent">
+            <p>
+              I <strong>${data.borrower_name},</strong> hereby consent to the
+              creation of a direct debit mandate on the account provided. I
+              understand that this mandate may be activated in the event of
+              default, in accordance with the applicable policies.
+            </p>
           </div>
-
-          <div class="form-group">
-            <div class="field">
-              <label>Bank</label>
-              <input type="text" value="${data.payer_bank}" readonly />
-            </div>
-            <div class="field">
-              <label>Email</label>
-              <input type="email" value="${data.payer_email}" readonly />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <div class="field">
-              <label>Account Number</label>
-              <input type="text" value="${
-                data.payer_account_number
-              }" readonly />
-            </div>
-          </div>
-        </div>
-
-        <!-- Consent Statement -->
-        <div class="consent">
-          <p>
-            I <strong>${data.borrower_name},</strong> hereby consent to the
-            creation of a direct debit mandate on the account provided. I
-            understand that this mandate may be activated in the event of
-            default, in accordance with the applicable policies.
-          </p>
-        </div>
-
-        <!-- Signature Section -->
-        <div class="signature-section">
-          <div class="signature-group">
-            <div class="signature-field">
-              <label>Signature</label>
-              <p id="signatureName">${data.borrower_name}</p>
-              <div class="signature-line"></div>
-              <div id="dateLabel">Date</div>
+  
+          <!-- Signature Section -->
+          <div class="signature-section">
+            <div class="signature-group">
+              <div class="signature-field">
+                <label>Signature</label>
+                <p id="signatureName">${data.borrower_name}</p>
+                <div class="signature-line"></div>
+                <div id="dateLabel">Date</div>
+              </div>
             </div>
           </div>
         </div>
+
       </div>
 
       <footer class="footer">

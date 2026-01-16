@@ -159,7 +159,7 @@ export default function Home() {
     try {
       console.log('Sending data to LOCAL MANDATE:', mandateSampleData);
       
-      const response = await fetch('/api/seeds-direct-debit-mandate', {
+      const response = await fetch('/api/generate-seeds-direct-debit-mandate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,8 +168,17 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`HTTP error! status: ${response.status}, details: ${errorData.details || errorData.error}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage += `, details: ${errorData.details || errorData.error}`;
+          } catch {
+            // If JSON parsing fails, just use the status message
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       // Get the PDF blob
@@ -201,7 +210,7 @@ export default function Home() {
     try {
       console.log('Sending data to DEPLOYED MANDATE:', mandateSampleData);
       
-      const response = await fetch('https://liberty-assured-automations.vercel.app/api/seeds-direct-debit-mandate', {
+      const response = await fetch('https://liberty-assured-automations.vercel.app/api/generate-seeds-direct-debit-mandate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -210,8 +219,17 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(`HTTP error! status: ${response.status}, details: ${errorData.details || errorData.error}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          try {
+            const errorData = await response.json();
+            errorMessage += `, details: ${errorData.details || errorData.error}`;
+          } catch {
+            // If JSON parsing fails, just use the status message
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       // Get the PDF blob

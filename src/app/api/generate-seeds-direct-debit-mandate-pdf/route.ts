@@ -110,7 +110,6 @@ const generateHtmlTemplate = (
         background-position: center;
         padding: 16px;
         text-align: center;
-        border-radius: 8px 8px 0 0;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
@@ -176,17 +175,13 @@ const generateHtmlTemplate = (
 
       .form-group {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 16px;
         margin-bottom: 16px;
       }
 
       .form-group.full {
         grid-template-columns: 1fr;
-      }
-
-      .form-group.third {
-        grid-template-columns: 1fr 1fr 1fr;
       }
 
       .field {
@@ -350,9 +345,7 @@ const generateHtmlTemplate = (
               <label>Phone Number</label>
               <input type="text" value="${data.business_phone}" readonly />
             </div>
-          </div>
 
-          <div class="form-group">
             <div class="field">
               <label>Email</label>
               <input type="email" value="${data.business_email}" readonly />
@@ -361,9 +354,8 @@ const generateHtmlTemplate = (
               <label>Bank</label>
               <input type="text" value="${data.business_bank}" readonly />
             </div>
-          </div>
 
-          <div class="form-group">
+            
             <div class="field">
               <label>Account Number</label>
               <input
@@ -372,6 +364,8 @@ const generateHtmlTemplate = (
                 readonly
               />
             </div>
+          </div>
+
           </div>
         </div>
 
@@ -449,7 +443,9 @@ const generateHtmlTemplate = (
           <div class="form-group">
             <div class="field">
               <label>Account Number</label>
-              <input type="text" value="${data.payer_account_number}" readonly />
+              <input type="text" value="${
+                data.payer_account_number
+              }" readonly />
             </div>
           </div>
         </div>
@@ -527,7 +523,11 @@ export async function POST(request: NextRequest) {
       "https://res.cloudinary.com/dk4cqoxcp/image/upload/v1768557489/seeds-footer-pattern-2.png"
     );
 
-    const htmlContent = generateHtmlTemplate(data, headerImageSrc, footerImageSrc);
+    const htmlContent = generateHtmlTemplate(
+      data,
+      headerImageSrc,
+      footerImageSrc
+    );
 
     console.log("HTML template generated, launching browser...");
     const puppeteer = await getPuppeteer();
@@ -569,9 +569,10 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=${
-          data.borrower_name.replace(/[^a-zA-Z0-9]/g, "_")
-        }-direct-debit-mandate.pdf`,
+        "Content-Disposition": `attachment; filename=${data.borrower_name.replace(
+          /[^a-zA-Z0-9]/g,
+          "_"
+        )}-direct-debit-mandate.pdf`,
       },
     });
   } catch (error: any) {
@@ -601,12 +602,17 @@ export async function GET(request: NextRequest) {
     // Example data for preview
     const exampleData: DirectDebitMandateData = {
       borrower_name: searchParams.get("borrower_name") || "John Doe",
-      business_name: searchParams.get("business_name") || "Seeds and Pennies Limited",
+      business_name:
+        searchParams.get("business_name") || "Seeds and Pennies Limited",
       business_phone: searchParams.get("business_phone") || "+234 123 456 7890",
-      business_email: searchParams.get("business_email") || "business@seeds.com",
+      business_email:
+        searchParams.get("business_email") || "business@seeds.com",
       business_bank: searchParams.get("business_bank") || "First Bank",
-      business_account_number: searchParams.get("business_account_number") || "1234567890",
-      payment_description: searchParams.get("payment_description") || "Daily loan repayment for business loan",
+      business_account_number:
+        searchParams.get("business_account_number") || "1234567890",
+      payment_description:
+        searchParams.get("payment_description") ||
+        "Daily loan repayment for business loan",
       amount: searchParams.get("amount") || "₦50,000.00",
       recursivity: searchParams.get("recursivity") || "Daily",
       scheduled_reduction: searchParams.get("scheduled_reduction") || "None",
@@ -617,7 +623,8 @@ export async function GET(request: NextRequest) {
       payer_phone: searchParams.get("payer_phone") || "+234 987 654 3210",
       payer_bank: searchParams.get("payer_bank") || "GTBank",
       payer_email: searchParams.get("payer_email") || "john@example.com",
-      payer_account_number: searchParams.get("payer_account_number") || "0987654321",
+      payer_account_number:
+        searchParams.get("payer_account_number") || "0987654321",
     };
 
     // Fetch background images for preview
@@ -628,7 +635,11 @@ export async function GET(request: NextRequest) {
       "https://res.cloudinary.com/dk4cqoxcp/image/upload/v1768557489/seeds-footer-pattern-2.png"
     );
 
-    const htmlContent = generateHtmlTemplate(exampleData, headerImageSrc, footerImageSrc);
+    const htmlContent = generateHtmlTemplate(
+      exampleData,
+      headerImageSrc,
+      footerImageSrc
+    );
 
     return new NextResponse(htmlContent, {
       status: 200,

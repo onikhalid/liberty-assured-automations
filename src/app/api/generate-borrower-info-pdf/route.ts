@@ -684,7 +684,7 @@ export async function POST(request: NextRequest) {
         <!-- Page 1: Cover -->
         <div class="content page cover">
             <div style="text-align:center; padding: 24px 8px;">
-                <div style="display:flex; justify-content:center; margin-bottom:32px;"><img src="${companyLogoSvg}" alt="Company Logo" class="cover-logo"></div>
+                <div style="display:flex; justify-content:center; margin-bottom:32px;"><img src="${companyLogoSvg}" alt="Logo" class="cover-logo"></div>
                 <div style="font-size:38px; font-weight:800; color:#f2f5f9; margin-bottom:8px;">KYC Submission</div>
                 <div style="font-size:24px; font-weight:700; color:#c9d3e6; margin-bottom:20px;">${
                   processedData.obligor_name || ""

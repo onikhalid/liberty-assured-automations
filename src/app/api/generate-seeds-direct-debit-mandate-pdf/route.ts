@@ -318,7 +318,7 @@ const generateHtmlTemplate = (
         <div class="logo">
           <img
             src="https://res.cloudinary.com/dk4cqoxcp/image/upload/v1768554878/seeds-logo.png"
-            alt="Seeds Logo"
+            alt="Logo"
           />
         </div>
       </div>
